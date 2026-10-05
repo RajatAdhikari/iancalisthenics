@@ -16,70 +16,70 @@ const BUYERS: BuyerNotification[] = [
     city: 'Mumbai, Maharashtra',
     item: 'Full Calisthenics Mastery + Indian Diet Blueprint',
     timeAgo: '2 minutes ago',
-    avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=100&auto=format&fit=crop&q=80'
+    avatar: '/images/avatars/avatar1.jpg'
   },
   {
     name: 'Aman Sharma',
     city: 'New Delhi',
     item: 'Unlocked Beginner to Advanced Video Course',
     timeAgo: '4 minutes ago',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80'
+    avatar: '/images/avatars/avatar2.jpg'
   },
   {
     name: 'Sneha Patel',
     city: 'Ahmedabad, Gujarat',
     item: 'Enrolled in Female Calisthenics & Tone Guide',
     timeAgo: '6 minutes ago',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80'
+    avatar: '/images/avatars/avatar3.jpg'
   },
   {
     name: 'Rohan Deshmukh',
     city: 'Pune, Maharashtra',
     item: 'Purchased at ₹489 (97% Discount Claimed)',
     timeAgo: '8 minutes ago',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&auto=format&fit=crop&q=80'
+    avatar: '/images/avatars/avatar4.jpg'
   },
   {
     name: 'Priya Nair',
     city: 'Bengaluru, Karnataka',
     item: 'Started 90-Day Calisthenics Transformation',
     timeAgo: '11 minutes ago',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80'
+    avatar: '/images/avatars/avatar5.jpg'
   },
   {
     name: 'Harsh Verma',
     city: 'Lucknow, Uttar Pradesh',
     item: 'Unlocked Muscle-Up & Planche Video Guide',
     timeAgo: '14 minutes ago',
-    avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=100&auto=format&fit=crop&q=80'
+    avatar: '/images/avatars/avatar6.jpg'
   },
   {
     name: 'Arjun Singh',
     city: 'Jaipur, Rajasthan',
     item: 'Enrolled in Full Course + Nutrition Chart',
     timeAgo: '16 minutes ago',
-    avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100&auto=format&fit=crop&q=80'
+    avatar: '/images/avatars/avatar7.jpg'
   },
   {
     name: 'Ananya Roy',
     city: 'Kolkata, West Bengal',
     item: 'Joined Ian Barseagle Masterclass',
     timeAgo: '19 minutes ago',
-    avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100&auto=format&fit=crop&q=80'
+    avatar: '/images/avatars/avatar8.jpg'
   },
   {
     name: 'Vivek Choudhary',
     city: 'Chandigarh',
     item: 'Claimed Instant Access for ₹489',
     timeAgo: '23 minutes ago',
-    avatar: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=100&auto=format&fit=crop&q=80'
+    avatar: '/images/avatars/avatar9.jpg'
   },
   {
     name: 'Pooja Reddy',
     city: 'Hyderabad, Telangana',
     item: 'Unlocked Full Program & Veg Diet Chart',
     timeAgo: '27 minutes ago',
-    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&auto=format&fit=crop&q=80'
+    avatar: '/images/avatars/avatar10.jpg'
   }
 ];
 
@@ -118,7 +118,7 @@ export const LiveSalesNotification: React.FC = () => {
   if (dismissed) return null;
 
   return (
-    <div className="fixed bottom-20 sm:bottom-6 left-3 sm:left-6 z-40 max-w-[340px] pointer-events-auto">
+    <div className="fixed bottom-20 sm:bottom-6 left-3 sm:left-6 z-40 max-w-[310px] sm:max-w-[340px] pointer-events-auto">
       <AnimatePresence>
         {isVisible && (
           <motion.div
@@ -126,7 +126,7 @@ export const LiveSalesNotification: React.FC = () => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.4, ease: 'easeOut' }}
-            className="relative bg-zinc-900/95 border border-emerald-500/40 backdrop-blur-xl rounded-2xl p-3.5 shadow-2xl shadow-emerald-950/50 flex items-start gap-3 text-zinc-100"
+            className="relative bg-zinc-900/95 border border-emerald-500/40 backdrop-blur-xl rounded-2xl p-3 sm:p-3.5 shadow-2xl shadow-emerald-950/50 flex items-start gap-3 text-zinc-100"
           >
             {/* Close button */}
             <button
@@ -142,7 +142,7 @@ export const LiveSalesNotification: React.FC = () => {
               <img
                 src={currentBuyer.avatar}
                 alt={currentBuyer.name}
-                className="w-11 h-11 rounded-full object-cover border-2 border-emerald-500/60 shadow-md"
+                className="w-10 h-10 sm:w-11 sm:h-11 rounded-full object-cover border-2 border-emerald-500/60 shadow-md"
               />
               <span className="absolute -bottom-0.5 -right-0.5 bg-emerald-500 rounded-full p-0.5 text-black">
                 <CheckCircle2 className="w-3 h-3 fill-emerald-400 text-black" />
@@ -158,10 +158,10 @@ export const LiveSalesNotification: React.FC = () => {
                 </p>
                 <span className="text-[10px] text-emerald-400 font-mono font-medium">{currentBuyer.timeAgo}</span>
               </div>
-              <p className="text-zinc-300 font-medium leading-snug line-clamp-1">
+              <p className="text-zinc-300 font-medium leading-snug line-clamp-1 text-[11px] sm:text-xs">
                 {currentBuyer.item}
               </p>
-              <div className="flex items-center gap-1.5 mt-1 text-[11px] text-emerald-400/90 font-medium">
+              <div className="flex items-center gap-1.5 mt-1 text-[10px] sm:text-[11px] text-emerald-400/90 font-medium">
                 <ShoppingBag className="w-3 h-3 text-emerald-400" />
                 <span>Verified India Buyer • Instant Access</span>
               </div>

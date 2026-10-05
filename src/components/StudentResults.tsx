@@ -1,21 +1,82 @@
 import React from 'react';
-import { Star, CheckCircle, Trophy, Flame } from 'lucide-react';
+import { Star, CheckCircle, Trophy, Flame, ArrowRight, Sparkles } from 'lucide-react';
 
 export const StudentResults: React.FC = () => {
   return (
     <section className="py-16 md:py-24 bg-[#09090b] border-t border-zinc-900 relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-3xl mx-auto mb-16">
+        <div className="text-center max-w-3xl mx-auto mb-14">
           <div className="inline-flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-4">
             <Trophy className="w-3.5 h-3.5" />
             Proof Over Promises
           </div>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-white font-display uppercase tracking-tight">
-            Real Athletes. <span className="text-gradient-emerald">Unstoppable Results.</span>
+            Real Transformations. <span className="text-gradient-emerald">Greek-God Standard.</span>
           </h2>
           <p className="mt-4 text-base sm:text-lg text-zinc-400">
-            Check out actual community screenshots and member wins using Ian Barseagle's progression system.
+            Check out actual community screenshots, student PRs, and the world-class physique standard.
           </p>
+        </div>
+
+        {/* 🌟 Hrithik Roshan / Celebrity Transformation Spotlight 🌟 */}
+        <div className="mb-16 bg-gradient-to-br from-zinc-900 via-zinc-900/95 to-amber-950/20 border-2 border-amber-500/40 rounded-3xl p-5 sm:p-8 shadow-2xl shadow-amber-950/30 max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+            {/* Image */}
+            <div className="lg:col-span-6">
+              <div className="relative rounded-2xl overflow-hidden border-2 border-amber-500/50 bg-black shadow-xl group">
+                <img
+                  src="/images/hrithik-transformation.jpg"
+                  alt="Hrithik Roshan Before and After Greek-God Transformation"
+                  className="w-full h-auto object-cover group-hover:scale-[1.02] transition-transform duration-500"
+                />
+                <div className="absolute top-3 left-3 bg-amber-500 text-black text-[10px] font-black uppercase px-2.5 py-1 rounded-full shadow-md flex items-center gap-1">
+                  <Flame className="w-3 h-3 fill-black text-black" />
+                  Bollywood's Greek-God Benchmark
+                </div>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="lg:col-span-6 space-y-4 text-center lg:text-left">
+              <div className="inline-flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/30 text-amber-300 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                Celebrity & Athlete Approved
+              </div>
+              <h3 className="text-2xl sm:text-3xl font-black text-white font-display uppercase tracking-tight leading-tight">
+                The Greek-God Blueprint: <br />
+                <span className="text-gradient-gold">Enrolled & Followed by Top Icons</span>
+              </h3>
+              <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed">
+                Bollywood ke ultimate "Greek God" <strong>Hrithik Roshan</strong> se lekar top athletes tak—sabka ek hi secret hai: <em>Functional Bodyweight Core Compression, Tension Training, aur Clean Nutrition.</em>
+              </p>
+              <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
+                Is masterclass me wahi exact protocol hai jo aapko bina spine-crushing weights ya bulky machine workout ke aisi laser-cut 8-pack aesthetic physique deta hai!
+              </p>
+
+              <div className="p-3.5 bg-black/60 border border-zinc-800 rounded-xl text-xs text-zinc-300 space-y-2 text-left">
+                <div className="flex items-center gap-2 text-emerald-400 font-semibold">
+                  <CheckCircle className="w-4 h-4 flex-shrink-0" />
+                  <span>Razor-sharp V-Taper & aesthetic shredded waist</span>
+                </div>
+                <div className="flex items-center gap-2 text-emerald-400 font-semibold">
+                  <CheckCircle className="w-4 h-4 flex-shrink-0" />
+                  <span>Enrolled by top fitness creators & bodyweight athletes</span>
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <a
+                  href="https://superprofile.bio/vp/calisthenics"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-black text-xs sm:text-sm text-black bg-gradient-to-r from-amber-400 via-amber-300 to-amber-400 hover:scale-105 active:scale-95 transition-all shadow-lg shadow-amber-500/25"
+                >
+                  <span>CLAIM GREEK-GOD BLUEPRINT (₹489)</span>
+                  <ArrowRight className="w-4 h-4" />
+                </a>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* 2 Featured Student Image Screenshots */}

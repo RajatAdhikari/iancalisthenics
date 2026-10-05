@@ -1,5 +1,5 @@
 import React from 'react';
-import { Target, CheckCircle2, Dumbbell, ShieldAlert, Award, ArrowRight } from 'lucide-react';
+import { Target, CheckCircle2, ShieldAlert, Award, ArrowRight, Sparkles } from 'lucide-react';
 
 export const AuthorityStory: React.FC = () => {
   return (
@@ -99,6 +99,29 @@ export const AuthorityStory: React.FC = () => {
                 <ArrowRight className="w-4 h-4" />
               </a>
             </div>
+          </div>
+        </div>
+
+        {/* Ian's Personal 2-Year Transformation Banner */}
+        <div className="mt-16 bg-zinc-900/90 border-2 border-emerald-500/40 rounded-3xl p-6 sm:p-8 shadow-2xl">
+          <div className="text-center max-w-2xl mx-auto mb-6">
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-mono font-bold tracking-widest text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-md uppercase">
+              <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+              Ian Barseagle's Real 2-Year Progression
+            </span>
+            <h3 className="text-2xl sm:text-3xl font-extrabold text-white font-display mt-3">
+              "I Was Not Born With Superhuman Genetics."
+            </h3>
+            <p className="text-xs sm:text-sm text-zinc-400 mt-2">
+              Day 1 (Skinny teenager) ➔ 6 Months (Athletic core & posture) ➔ 2+ Years (World-class Greek-God aesthetic physique). Calisthenics aur pure nutrition ka real proof!
+            </p>
+          </div>
+          <div className="relative rounded-2xl overflow-hidden bg-black border border-zinc-800 max-w-3xl mx-auto shadow-2xl">
+            <img
+              src="/images/ian-personal-transformation.jpg"
+              alt="Ian Barseagle personal transformation Day 1 to 2+ years"
+              className="w-full h-auto object-cover"
+            />
           </div>
         </div>
       </div>
