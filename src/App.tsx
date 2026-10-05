@@ -14,41 +14,41 @@ import { LiveSalesNotification } from './components/LiveSalesNotification';
 
 export const App: React.FC = () => {
   return (
-    <div className="min-h-screen bg-[#09090b] text-zinc-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-black">
-      {/* 1. Urgency Countdown Top Bar */}
-      <TopUrgencyBanner />
+    <div className="min-h-screen bg-[#09090b] text-zinc-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-black overflow-x-hidden">
+      {/* Unified Sticky Header: Top Urgency Bar + Navbar together so they NEVER overlap */}
+      <header className="sticky top-0 z-40 w-full shadow-lg">
+        <TopUrgencyBanner />
+        <Navbar />
+      </header>
 
-      {/* 2. Top Navigation */}
-      <Navbar />
-
-      {/* 3. Hero Section */}
+      {/* Hero Section */}
       <HeroSection />
 
-      {/* 4. Storyline & Authority (Ian's philosophy, gym vs calisthenics, inclusivity) */}
+      {/* Storyline & Authority (Ian's philosophy, gym vs calisthenics, inclusivity) */}
       <AuthorityStory />
 
-      {/* 5. Calisthenics Skills Showcase (Muscle-ups, Planche, Handstand) */}
+      {/* Calisthenics Skills Showcase (Muscle-ups, Planche, Handstand) */}
       <SkillShowcase />
 
-      {/* 6. Complete 5-Pillar Curriculum (Zero Foundation to Indian Diet) */}
+      {/* Complete 5-Pillar Curriculum (Zero Foundation to Indian Diet) */}
       <CurriculumPillars />
 
-      {/* 7. Student Results & Real Proof (Enfy & JAH2303 community wins) */}
+      {/* Student Results & Real Proof (Enfy & JAH2303 community wins) */}
       <StudentResults />
 
-      {/* 8. Offer Stack & Pricing (₹15,000 -> ₹489 anchor) */}
+      {/* Offer Stack & Pricing (₹15,000 -> ₹489 anchor) */}
       <OfferPricing />
 
-      {/* 9. Frequently Asked Questions */}
+      {/* Frequently Asked Questions */}
       <FaqSection />
 
-      {/* 10. Meta & Google Ads Compliant Legal Footer & Modals */}
+      {/* Meta & Google Ads Compliant Legal Footer & Modals */}
       <AdComplianceModal />
 
-      {/* 11. Mobile Sticky Bottom CTA */}
+      {/* Mobile Sticky Bottom CTA */}
       <StickyMobileBar />
 
-      {/* 12. Live Sales Notifications (10 Indian Real-Time Buyers) */}
+      {/* Live Sales Notifications (10 Indian Real-Time Buyers) */}
       <LiveSalesNotification />
     </div>
   );

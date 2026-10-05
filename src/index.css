@@ -10,7 +10,8 @@
   }
 
   h1, h2, h3, .font-display {
-    font-family: 'Syne', 'Inter', sans-serif;
+    font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    letter-spacing: -0.025em;
   }
 }
 
