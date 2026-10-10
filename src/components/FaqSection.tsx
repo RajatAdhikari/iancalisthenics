@@ -25,7 +25,7 @@ const FAQS: FaqItem[] = [
   },
   {
     q: 'Payment ke baad mujhe access kaise aur kab milega?',
-    a: 'Instant access! Jaise hi aap Superprofile par payment complete karenge, aapke registered email address par instant login link aur course dashboard open ho jayega. Aap mobile ya laptop kisi par bhi turant start kar sakte hain.'
+    a: 'Instant access! Jaise hi aap Razorpay (UPI, GPay, PhonePe, Paytm ya Card) se payment complete karenge, aap turant official Thank You Access Page par redirect ho jayenge jahan se aap Google Drive course folders open aur save kar sakte hain.'
   },
   {
     q: 'Diet plan me kya Indian food items included hain?',

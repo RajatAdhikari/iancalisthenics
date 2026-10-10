@@ -2,7 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Check, ShieldCheck, Zap, ArrowRight, Sparkles, Clock, Lock } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
-export const OfferPricing: React.FC = () => {
+interface OfferPricingProps {
+  onOpenCheckout?: () => void;
+}
+
+export const OfferPricing: React.FC<OfferPricingProps> = ({ onOpenCheckout }) => {
   const [timeLeft, setTimeLeft] = useState(14 * 60 + 47);
 
   useEffect(() => {
@@ -22,6 +26,9 @@ export const OfferPricing: React.FC = () => {
       spread: 70,
       origin: { y: 0.6 }
     });
+    if (onOpenCheckout) {
+      onOpenCheckout();
+    }
   };
 
   return (
@@ -87,37 +94,37 @@ export const OfferPricing: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs sm:text-sm text-zinc-200">
               <div className="flex items-start gap-2.5">
                 <span className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <Check className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                  <Check className="w-3.5 h-3.5" />
                 </span>
                 <span>Zero to Advance Video Course (₹7,999 Value)</span>
               </div>
               <div className="flex items-start gap-2.5">
                 <span className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <Check className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                  <Check className="w-3.5 h-3.5" />
                 </span>
                 <span>Muscle-Up & Planche Video Vault (₹3,999 Value)</span>
               </div>
               <div className="flex items-start gap-2.5">
                 <span className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <Check className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                  <Check className="w-3.5 h-3.5" />
                 </span>
                 <span>Custom Indian Veg & Non-Veg Diet (₹2,499 Value)</span>
               </div>
               <div className="flex items-start gap-2.5">
                 <span className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <Check className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                  <Check className="w-3.5 h-3.5" />
                 </span>
                 <span>Female Bodyweight Tone Roadmap (₹1,999 Value)</span>
               </div>
               <div className="flex items-start gap-2.5">
                 <span className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <Check className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                  <Check className="w-3.5 h-3.5" />
                 </span>
                 <span>Joint & Tendon Conditioning Guide (₹1,499 Value)</span>
               </div>
               <div className="flex items-start gap-2.5">
                 <span className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <Check className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                  <Check className="w-3.5 h-3.5" />
                 </span>
                 <span>Lifetime Updates & Community Access (Priceless)</span>
               </div>
@@ -126,17 +133,14 @@ export const OfferPricing: React.FC = () => {
 
           {/* Primary CTA Button */}
           <div className="text-center pt-2">
-            <a
-              href="https://superprofile.bio/vp/calisthenics"
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
               onClick={triggerConfetti}
-              className="w-full inline-flex items-center justify-center gap-3 px-8 py-4 sm:py-5 rounded-2xl font-black text-base sm:text-lg text-black bg-gradient-to-r from-emerald-400 via-emerald-300 to-emerald-400 hover:scale-[1.01] active:scale-95 transition-all shadow-xl shadow-emerald-500/30 group"
+              className="w-full inline-flex items-center justify-center gap-3 px-8 py-4 sm:py-5 rounded-2xl font-black text-base sm:text-lg text-black bg-gradient-to-r from-emerald-400 via-emerald-300 to-emerald-400 hover:scale-[1.01] active:scale-95 transition-all shadow-xl shadow-emerald-500/30 group cursor-pointer"
             >
               <Zap className="w-5 h-5 sm:w-6 sm:h-6 fill-black text-black group-hover:rotate-12 transition-transform" />
               <span>GET INSTANT ACCESS FOR ₹489</span>
               <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 text-black group-hover:translate-x-1.5 transition-transform" />
-            </a>
+            </button>
 
             <div className="mt-4 flex flex-wrap items-center justify-center gap-4 text-[11px] sm:text-xs text-zinc-400">
               <span className="flex items-center gap-1">

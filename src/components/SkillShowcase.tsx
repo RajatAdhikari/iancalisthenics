@@ -1,6 +1,10 @@
 import React from 'react';
 import { Sparkles, Check, ArrowRight } from 'lucide-react';
 
+interface SkillShowcaseProps {
+  onOpenCheckout?: () => void;
+}
+
 const SKILLS = [
   {
     title: 'The Explosive Muscle-Up',
@@ -28,7 +32,7 @@ const SKILLS = [
   }
 ];
 
-export const SkillShowcase: React.FC = () => {
+export const SkillShowcase: React.FC<SkillShowcaseProps> = ({ onOpenCheckout }) => {
   return (
     <section className="py-16 md:py-24 bg-[#0a0a0d] border-t border-zinc-900 relative overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -96,14 +100,12 @@ export const SkillShowcase: React.FC = () => {
                 </p>
                 <div className="mt-3 flex items-center justify-between">
                   <span className="text-xs text-zinc-400">100% Calisthenics Routine</span>
-                  <a
-                    href="https://superprofile.bio/vp/calisthenics"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1"
+                  <button
+                    onClick={onOpenCheckout}
+                    className="text-xs font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 cursor-pointer"
                   >
                     Unlock for ₹489 <ArrowRight className="w-3 h-3" />
-                  </a>
+                  </button>
                 </div>
               </div>
             </div>

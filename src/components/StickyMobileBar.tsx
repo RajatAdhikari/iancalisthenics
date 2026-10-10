@@ -2,13 +2,20 @@ import React from 'react';
 import { Zap, ArrowRight } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
-export const StickyMobileBar: React.FC = () => {
+interface StickyMobileBarProps {
+  onOpenCheckout?: () => void;
+}
+
+export const StickyMobileBar: React.FC<StickyMobileBarProps> = ({ onOpenCheckout }) => {
   const handleClick = () => {
     confetti({
       particleCount: 70,
       spread: 60,
       origin: { y: 0.8 }
     });
+    if (onOpenCheckout) {
+      onOpenCheckout();
+    }
   };
 
   return (
@@ -25,17 +32,14 @@ export const StickyMobileBar: React.FC = () => {
           </div>
         </div>
 
-        <a
-          href="https://superprofile.bio/vp/calisthenics"
-          target="_blank"
-          rel="noopener noreferrer"
+        <button
           onClick={handleClick}
-          className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl font-black text-xs text-black bg-gradient-to-r from-emerald-400 to-emerald-300 shadow-lg shadow-emerald-500/30 active:scale-95 transition-transform"
+          className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl font-black text-xs text-black bg-gradient-to-r from-emerald-400 to-emerald-300 shadow-lg shadow-emerald-500/30 active:scale-95 transition-transform cursor-pointer"
         >
           <Zap className="w-4 h-4 fill-black text-black" />
           <span>UNLOCK NOW</span>
           <ArrowRight className="w-3.5 h-3.5 text-black" />
-        </a>
+        </button>
       </div>
     </div>
   );

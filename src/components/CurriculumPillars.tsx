@@ -1,6 +1,10 @@
 import React from 'react';
 import { ShieldCheck, Dumbbell, Zap, Utensils, HeartHandshake, Film, PlayCircle, BookOpen } from 'lucide-react';
 
+interface CurriculumPillarsProps {
+  onOpenCheckout?: () => void;
+}
+
 const PILLARS = [
   {
     pillar: 'PILLAR 01',
@@ -69,7 +73,7 @@ const PILLARS = [
   }
 ];
 
-export const CurriculumPillars: React.FC = () => {
+export const CurriculumPillars: React.FC<CurriculumPillarsProps> = ({ onOpenCheckout }) => {
   return (
     <section className="py-16 md:py-24 bg-zinc-950 border-t border-zinc-900 relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -167,14 +171,12 @@ export const CurriculumPillars: React.FC = () => {
             </div>
 
             <div className="mt-8">
-              <a
-                href="https://superprofile.bio/vp/calisthenics"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full py-3.5 px-4 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-black font-extrabold text-sm flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-500/20"
+              <button
+                onClick={onOpenCheckout}
+                className="w-full py-3.5 px-4 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-black font-extrabold text-sm flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-500/20 cursor-pointer"
               >
                 <span>Enroll For ₹489 (Was ₹15,000)</span>
-              </a>
+              </button>
             </div>
           </div>
         </div>

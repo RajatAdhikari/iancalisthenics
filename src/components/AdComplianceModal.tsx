@@ -9,7 +9,7 @@ export const AdComplianceModal: React.FC = () => {
   return (
     <>
       {/* Footer Navigation Bar */}
-      <footer className="bg-zinc-950 border-t border-zinc-900 py-12 px-4 sm:px-6 lg:px-8 text-zinc-400 text-xs">
+      <footer className="bg-zinc-950 border-t border-zinc-900 pt-12 pb-24 sm:pb-12 px-4 sm:px-6 lg:px-8 text-zinc-400 text-xs">
         <div className="max-w-7xl mx-auto">
           {/* Legal Links */}
           <div className="flex flex-wrap items-center justify-center gap-6 mb-8 text-zinc-300 font-medium">
@@ -54,7 +54,7 @@ export const AdComplianceModal: React.FC = () => {
               <strong>Medical Advisory:</strong> The content provided in this masterclass is for educational purposes only. Always consult a physician or certified healthcare professional before beginning any vigorous physical workout or nutritional program.
             </p>
             <p className="pt-4 border-t border-zinc-900 text-zinc-600">
-              © {new Date().getFullYear()} Ian Barseagle Calisthenics Masterclass. All Rights Reserved. Official checkout powered by Superprofile.
+              © {new Date().getFullYear()} Ian Barseagle Calisthenics Masterclass. All Rights Reserved. Official checkout powered by Razorpay. Support: boltlabs1@gmail.com
             </p>
           </div>
         </div>
@@ -84,7 +84,7 @@ export const AdComplianceModal: React.FC = () => {
                 </p>
                 <h4 className="font-bold text-white pt-2">1. Information We Collect</h4>
                 <p>
-                  When you purchase the program via our checkout partner Superprofile, we collect your name, email address, and phone number for delivery of digital course materials and transactional receipts. We do not store sensitive payment card details; all payments are processed through RBI-approved PCI-DSS compliant payment gateways.
+                  When you purchase the program via our checkout powered by Razorpay, we collect your name, email address, and phone number for delivery of digital course materials and transactional receipts. We do not store sensitive payment card details; all payments are processed through RBI-approved PCI-DSS compliant payment gateways.
                 </p>
                 <h4 className="font-bold text-white pt-2">2. Cookies & Advertising Pixels</h4>
                 <p>
@@ -92,7 +92,7 @@ export const AdComplianceModal: React.FC = () => {
                 </p>
                 <h4 className="font-bold text-white pt-2">3. Data Security & Third Parties</h4>
                 <p>
-                  We never sell, trade, or rent your personal contact information to third-party marketing brokers. Your information is used strictly for course delivery and customer support.
+                  We never sell, trade, or rent your personal contact information to third-party marketing brokers. Your information is used strictly for course delivery and customer support at boltlabs1@gmail.com.
                 </p>
               </div>
             )}
@@ -113,7 +113,7 @@ export const AdComplianceModal: React.FC = () => {
                 </p>
                 <h4 className="font-bold text-white pt-2">2. Digital Product Delivery</h4>
                 <p>
-                  Access is delivered immediately upon successful payment verification via Superprofile to the email address provided during checkout.
+                  Access is delivered immediately upon successful payment verification via Razorpay to the email address provided during checkout. For any assistance, reach us at boltlabs1@gmail.com.
                 </p>
               </div>
             )}
@@ -129,7 +129,7 @@ export const AdComplianceModal: React.FC = () => {
                   Due to the immediate digital nature of our downloadable video curriculum, PDF guides, and diet blueprints, all sales at the promotional India Launch rate of ₹489 are considered final once digital download credentials have been generated and dispatched.
                 </p>
                 <p>
-                  However, if you experience any technical difficulty accessing your course dashboard or video links, our support team will resolve it within 24 hours. Contact us through your Superprofile order invoice.
+                  However, if you experience any technical difficulty accessing your course dashboard or video links, our support team will resolve it within 24 hours. Contact us at boltlabs1@gmail.com.
                 </p>
               </div>
             )}

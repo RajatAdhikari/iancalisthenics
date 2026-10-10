@@ -1,7 +1,11 @@
 import React from 'react';
 import { Star, CheckCircle, Trophy, Flame, ArrowRight, Sparkles } from 'lucide-react';
 
-export const StudentResults: React.FC = () => {
+interface StudentResultsProps {
+  onOpenCheckout?: () => void;
+}
+
+export const StudentResults: React.FC<StudentResultsProps> = ({ onOpenCheckout }) => {
   return (
     <section className="py-16 md:py-24 bg-[#09090b] border-t border-zinc-900 relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -65,15 +69,13 @@ export const StudentResults: React.FC = () => {
               </div>
 
               <div className="pt-2">
-                <a
-                  href="https://superprofile.bio/vp/calisthenics"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-black text-xs sm:text-sm text-black bg-gradient-to-r from-amber-400 via-amber-300 to-amber-400 hover:scale-105 active:scale-95 transition-all shadow-lg shadow-amber-500/25"
+                <button
+                  onClick={onOpenCheckout}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-black text-xs sm:text-sm text-black bg-gradient-to-r from-amber-400 via-amber-300 to-amber-400 hover:scale-105 active:scale-95 transition-all shadow-lg shadow-amber-500/25 cursor-pointer"
                 >
                   <span>CLAIM GREEK-GOD BLUEPRINT (₹489)</span>
                   <ArrowRight className="w-4 h-4" />
-                </a>
+                </button>
               </div>
             </div>
           </div>
@@ -175,7 +177,7 @@ export const StudentResults: React.FC = () => {
             </p>
             <div>
               <p className="font-bold text-white text-sm">Varun Malhotra</p>
-              <p className="text-[11px] text-zinc-400">Delhi (Verified Superprofile Buyer)</p>
+              <p className="text-[11px] text-zinc-400">Delhi (Verified Razorpay Buyer)</p>
             </div>
           </div>
         </div>

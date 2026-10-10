@@ -1,7 +1,11 @@
 import React from 'react';
 import { Zap, Instagram, Youtube } from 'lucide-react';
 
-export const Navbar: React.FC = () => {
+interface NavbarProps {
+  onOpenCheckout?: () => void;
+}
+
+export const Navbar: React.FC<NavbarProps> = ({ onOpenCheckout }) => {
   return (
     <nav className="border-b border-zinc-800/80 bg-zinc-950/90 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between">
@@ -34,15 +38,13 @@ export const Navbar: React.FC = () => {
         </div>
 
         {/* Quick CTA */}
-        <a
-          href="https://superprofile.bio/vp/calisthenics"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="relative inline-flex items-center justify-center gap-1.5 px-3 py-1.5 sm:px-5 sm:py-2.5 rounded-full font-bold text-xs sm:text-sm text-black bg-gradient-to-r from-emerald-400 to-emerald-300 hover:from-emerald-300 hover:to-emerald-400 transition-all duration-200 shadow-md shadow-emerald-500/20 active:scale-95 group"
+        <button
+          onClick={onOpenCheckout}
+          className="relative inline-flex items-center justify-center gap-1.5 px-3 py-1.5 sm:px-5 sm:py-2.5 rounded-full font-bold text-xs sm:text-sm text-black bg-gradient-to-r from-emerald-400 to-emerald-300 hover:from-emerald-300 hover:to-emerald-400 transition-all duration-200 shadow-md shadow-emerald-500/20 active:scale-95 group cursor-pointer"
         >
           <Zap className="w-3.5 h-3.5 fill-black text-black group-hover:rotate-12 transition-transform" />
           <span>Claim ₹489 Offer</span>
-        </a>
+        </button>
       </div>
     </nav>
   );

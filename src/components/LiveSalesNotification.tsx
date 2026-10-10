@@ -89,26 +89,30 @@ export const LiveSalesNotification: React.FC = () => {
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    // Initial popup after 2 seconds
-    const initialTimeout = setTimeout(() => {
-      if (!dismissed) {
-        setIsVisible(true);
-      }
-    }, 2000);
+    if (dismissed) return;
 
-    // Auto rotate every 8 seconds
-    const interval = setInterval(() => {
-      if (!dismissed) {
+    let hideTimeout: ReturnType<typeof setTimeout>;
+
+    // Initial popup after 3.5 seconds, visible for 4 seconds
+    const initialTimeout = setTimeout(() => {
+      setIsVisible(true);
+      hideTimeout = setTimeout(() => {
         setIsVisible(false);
-        setTimeout(() => {
-          setCurrentIndex((prev) => (prev + 1) % BUYERS.length);
-          setIsVisible(true);
-        }, 1200);
-      }
-    }, 8500);
+      }, 4000);
+    }, 3500);
+
+    // Cycle every 10 seconds: show for 4s, stay hidden for 6s so CTA/Price box is never blocked
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % BUYERS.length);
+      setIsVisible(true);
+      hideTimeout = setTimeout(() => {
+        setIsVisible(false);
+      }, 4000);
+    }, 10000);
 
     return () => {
       clearTimeout(initialTimeout);
+      clearTimeout(hideTimeout);
       clearInterval(interval);
     };
   }, [dismissed]);
@@ -118,7 +122,7 @@ export const LiveSalesNotification: React.FC = () => {
   if (dismissed) return null;
 
   return (
-    <div className="fixed bottom-20 sm:bottom-6 left-3 sm:left-6 z-40 max-w-[310px] sm:max-w-[340px] pointer-events-auto">
+    <div className="fixed bottom-20 sm:bottom-5 left-3 sm:left-5 z-30 max-w-[290px] sm:max-w-[320px] pointer-events-auto">
       <AnimatePresence>
         {isVisible && (
           <motion.div

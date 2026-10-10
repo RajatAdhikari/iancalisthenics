@@ -1,7 +1,11 @@
 import React from 'react';
 import { Target, CheckCircle2, ShieldAlert, Award, ArrowRight, Sparkles } from 'lucide-react';
 
-export const AuthorityStory: React.FC = () => {
+interface AuthorityStoryProps {
+  onOpenCheckout?: () => void;
+}
+
+export const AuthorityStory: React.FC<AuthorityStoryProps> = ({ onOpenCheckout }) => {
   return (
     <section className="py-16 md:py-24 bg-zinc-950 border-t border-zinc-900 relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -89,15 +93,13 @@ export const AuthorityStory: React.FC = () => {
             </div>
 
             <div className="pt-2">
-              <a
-                href="https://superprofile.bio/vp/calisthenics"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-sm sm:text-base font-bold text-emerald-400 hover:text-emerald-300 underline underline-offset-8 transition-colors"
+              <button
+                onClick={onOpenCheckout}
+                className="inline-flex items-center gap-2 text-sm sm:text-base font-bold text-emerald-400 hover:text-emerald-300 underline underline-offset-8 transition-colors cursor-pointer"
               >
                 <span>Read Ian's 5-Pillar Blueprint Below or Unlock Access for ₹489</span>
                 <ArrowRight className="w-4 h-4" />
-              </a>
+              </button>
             </div>
           </div>
         </div>
