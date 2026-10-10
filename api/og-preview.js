@@ -3,15 +3,14 @@ export default function handler(req, res) {
   const proto = req.headers['x-forwarded-proto'] || 'https';
   const host = req.headers['x-forwarded-host'] || req.headers.host || 'iancalisthenics-plum.vercel.app';
   const baseUrl = `${proto}://${host}`;
-  const imageUrl = `${baseUrl}/images/ian-hero-physique.jpg`;
-  const pageUrl = `${baseUrl}${req.url || '/'}`;
+  const imageUrl = `${baseUrl}/images/og-whatsapp.jpg`;
 
   const title = 'Ian Barseagle Calisthenics Masterclass | Zero to Superhuman';
   const description =
     'Build a Greek-God physique without gyms or heavy weights. Unlock Muscle-Ups, Planche & Handstands with Ian Barseagle (700K+ IG, 900K+ YT) + Complete Indian Diet Plan for ₹489.';
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=3600');
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
 
   res.status(200).send(`<!DOCTYPE html>
 <html lang="en" prefix="og: https://ogp.me/ns#">
@@ -24,14 +23,14 @@ export default function handler(req, res) {
     <!-- Open Graph / WhatsApp / Facebook / Instagram Link Preview -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Ian Barseagle Calisthenics" />
-    <meta property="og:url" content="${pageUrl}" />
     <meta property="og:title" content="${title}" />
     <meta property="og:description" content="${description}" />
-    <meta property="og:image" content="${imageUrl}" />
+    <meta property="og:image" itemprop="image" content="${imageUrl}" />
+    <meta property="og:image:url" content="${imageUrl}" />
     <meta property="og:image:secure_url" content="${imageUrl}" />
     <meta property="og:image:type" content="image/jpeg" />
-    <meta property="og:image:width" content="640" />
-    <meta property="og:image:height" content="640" />
+    <meta property="og:image:width" content="600" />
+    <meta property="og:image:height" content="600" />
     <meta property="og:image:alt" content="Ian Barseagle Aesthetic Calisthenics Physique" />
 
     <!-- Twitter / X / Telegram Large Image Preview -->
