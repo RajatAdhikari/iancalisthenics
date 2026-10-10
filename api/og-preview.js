@@ -1,8 +1,8 @@
 // Vercel Serverless Function: Serves absolute Open Graph (og:image) URLs for WhatsApp, Instagram, Telegram & Facebook Link Previews
 export default function handler(req, res) {
   const proto = req.headers['x-forwarded-proto'] || 'https';
-  const host = req.headers['x-forwarded-host'] || req.headers.host || '';
-  const baseUrl = host ? `${proto}://${host}` : '';
+  const host = req.headers['x-forwarded-host'] || req.headers.host || 'iancalisthenics-plum.vercel.app';
+  const baseUrl = `${proto}://${host}`;
   const imageUrl = `${baseUrl}/images/ian-hero-physique.jpg`;
   const pageUrl = `${baseUrl}${req.url || '/'}`;
 
