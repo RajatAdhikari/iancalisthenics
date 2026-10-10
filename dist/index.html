@@ -12,10 +12,57 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800;900&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <!-- Razorpay Standard Checkout SDK -->
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
-    <script type="module" crossorigin src="/assets/index-DC_gtZLC.js"></script>
+    <!-- Meta Pixel Code (Rajat Adhikari - Pixel ID: 1377946710945110) -->
+    <script>
+      !function(f,b,e,v,n,t,s)
+      {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+      n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+      if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+      n.queue=[];t=b.createElement(e);t.async=!0;
+      t.src=v;s=b.getElementsByTagName(e)[0];
+      s.parentNode.insertBefore(t,s)}(window, document,'script',
+      'https://connect.facebook.net/en_US/fbevents.js');
+
+      (function() {
+        var userData = { country: 'in' };
+        try {
+          var savedUser = JSON.parse(localStorage.getItem('ian_calisthenics_user_info') || 'null');
+          var lastOrder = JSON.parse(localStorage.getItem('ian_calisthenics_last_order') || 'null');
+          var rawEmail = (savedUser && savedUser.em) || (lastOrder && lastOrder.email) || '';
+          var rawPhone = (savedUser && savedUser.ph) || (lastOrder && lastOrder.phone) || '';
+          if (rawEmail && rawEmail.indexOf('@') !== -1) {
+            userData.em = rawEmail.trim().toLowerCase();
+          }
+          if (rawPhone) {
+            var digits = String(rawPhone).replace(/\D/g, '');
+            if (digits.length === 10) digits = '91' + digits;
+            if (digits.length >= 10) userData.ph = digits;
+          }
+        } catch (err) {}
+
+        // Manual Advanced Matching (em, ph) hashed automatically by Meta Pixel using SHA-256
+        fbq('init', '1377946710945110', userData);
+      })();
+
+      fbq('track', 'PageView');
+      fbq('track', 'ViewContent', {
+        content_name: 'Ian Barseagle Calisthenics Masterclass',
+        content_category: 'Fitness & Calisthenics Course',
+        content_ids: ['ian_calisthenics_489'],
+        content_type: 'product',
+        value: 489,
+        currency: 'INR'
+      });
+    </script>
+    <!-- End Meta Pixel Code -->
+    <script type="module" crossorigin src="/assets/index-CQ4byOqS.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-COqdDNRO.css">
   </head>
   <body class="bg-[#09090b] text-zinc-100 antialiased selection:bg-emerald-500 selection:text-black overflow-x-hidden">
+    <noscript>
+      <img height="1" width="1" style="display:none"
+           src="https://www.facebook.com/tr?id=1377946710945110&ev=PageView&noscript=1" />
+    </noscript>
     <div id="root"></div>
   </body>
 </html>

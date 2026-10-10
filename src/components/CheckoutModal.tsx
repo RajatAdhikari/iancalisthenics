@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { RAZORPAY_CONFIG } from '../config/payment';
 import { findExistingOrder, savePaidOrder } from '../utils/customerOrders';
+import { trackBumpAddToCart, trackAddPaymentInfo, trackPurchase, setMetaAdvancedMatching } from '../utils/metaPixel';
 import confetti from 'canvas-confetti';
 
 declare global {
@@ -126,6 +127,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
     e.preventDefault();
     if (!validate()) return;
 
+    // Update Meta Pixel Advanced Matching with customer's email & phone
+    setMetaAdvancedMatching(email, phone);
+
     // 🚀 RETURNING CUSTOMER CHECK: If details match an existing payment, redirect directly to thank you page!
     if (existingOrder) {
       // If customer already owns everything OR did not select bump, redirect directly!
@@ -139,6 +143,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
 
       // If customer already owns base course and wants to add bump offer now, charge only ₹99!
       const upgradeAmount = bumpPrice;
+      trackAddPaymentInfo(email, phone, upgradeAmount, true);
       setIsProcessing(true);
       let upgradeOrderId: string | undefined = undefined;
       try {
@@ -202,6 +207,15 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
             }).catch(() => {});
           }
 
+          // Track ₹99 Bump Purchase on Meta Pixel
+          trackPurchase({
+            paymentId: response.razorpay_payment_id || `pay_up_${Date.now()}`,
+            email: email,
+            phone: phone.startsWith('+91') ? phone : '+91' + phone,
+            hasBump: true,
+            amount: upgradeAmount,
+          });
+
           const upgradedOrder: OrderData = {
             paymentId: `${existingOrder.paymentId} + ${response.razorpay_payment_id || 'pay_bump_upgrade'}`,
             email: email,
@@ -243,6 +257,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
       alert('Razorpay SDK failed to load. Please check your internet connection.');
       return;
     }
+
+    // Track Lead + AddPaymentInfo + Manual Advanced Matching on Meta Pixel
+    trackAddPaymentInfo(email, phone, totalAmount, hasBump);
 
     setIsProcessing(true);
 
@@ -325,6 +342,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
           amount: totalAmount,
           timestamp: Date.now()
         };
+
+        // 🎯 Fire Meta Pixel Purchase Event (Deduplicated by paymentId)
+        trackPurchase(orderData);
 
         // Persist order so customer is recognized in future visits
         savePaidOrder(orderData);
@@ -692,6 +712,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
                     setEmail(e.target.value);
                     if (errors.email) setErrors({ ...errors, email: undefined });
                   }}
+                  onBlur={() => {
+                    if (email.includes('@')) setMetaAdvancedMatching(email, phone);
+                  }}
                   placeholder="Email Address"
                   className={`w-full px-4 py-3 rounded-xl bg-zinc-950 border ${
                     errors.email ? 'border-red-500 text-red-100' : 'border-zinc-700/80'
@@ -718,6 +741,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
                       setPhone(e.target.value);
                       if (errors.phone) setErrors({ ...errors, phone: undefined });
                     }}
+                    onBlur={() => {
+                      if (phone.replace(/\D/g, '').length >= 10) setMetaAdvancedMatching(email, phone);
+                    }}
                     placeholder="Phone number *"
                     className={`w-full px-4 py-3 rounded-r-xl bg-zinc-950 border ${
                       errors.phone ? 'border-red-500 text-red-100' : 'border-zinc-700/80'
@@ -734,7 +760,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
 
               {/* 🌟 Order Bump Offer Box (Blue dashed border matching user's design) 🌟 */}
               <div
-                onClick={() => setHasBump(!hasBump)}
+                onClick={() => {
+                  const next = !hasBump;
+                  setHasBump(next);
+                  if (next) trackBumpAddToCart();
+                }}
                 className={`cursor-pointer rounded-2xl border-2 border-dashed p-3 sm:p-3.5 transition-all ${
                   hasBump
                     ? 'border-blue-400 bg-blue-950/40 shadow-lg shadow-blue-950/50'
@@ -773,7 +803,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
                     <input
                       type="checkbox"
                       checked={hasBump}
-                      onChange={(e) => setHasBump(e.target.checked)}
+                      onChange={(e) => {
+                        setHasBump(e.target.checked);
+                        if (e.target.checked) trackBumpAddToCart();
+                      }}
                       onClick={(e) => e.stopPropagation()}
                       className="w-4 h-4 rounded border-zinc-400 text-blue-600 focus:ring-0 cursor-pointer"
                     />

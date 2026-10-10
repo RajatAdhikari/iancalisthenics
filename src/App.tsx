@@ -13,6 +13,7 @@ import { StickyMobileBar } from './components/StickyMobileBar';
 import { LiveSalesNotification } from './components/LiveSalesNotification';
 import { CheckoutModal, OrderData } from './components/CheckoutModal';
 import { ThankYouPage } from './components/ThankYouPage';
+import { trackInitiateCheckout, trackPurchase } from './utils/metaPixel';
 
 export const App: React.FC = () => {
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
@@ -51,6 +52,7 @@ export const App: React.FC = () => {
   }, []);
 
   const openCheckout = () => {
+    trackInitiateCheckout(489, false);
     setIsCheckoutOpen(true);
   };
 
@@ -59,6 +61,7 @@ export const App: React.FC = () => {
   };
 
   const handlePaymentSuccess = (order: OrderData) => {
+    trackPurchase(order);
     setCompletedOrder(order);
     setIsCheckoutOpen(false);
     setCurrentPage('thank-you');

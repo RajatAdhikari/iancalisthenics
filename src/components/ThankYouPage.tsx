@@ -17,7 +17,8 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { RAZORPAY_CONFIG } from '../config/payment';
-import { findExistingOrder, savePaidOrder, getPaidOrders } from '../utils/customerOrders';
+import { findExistingOrder, savePaidOrder } from '../utils/customerOrders';
+import { trackPurchase } from '../utils/metaPixel';
 
 interface OrderData {
   paymentId: string;
@@ -55,6 +56,7 @@ export const ThankYouPage: React.FC<ThankYouPageProps> = ({ initialOrder, onRetu
     if (initialOrder) {
       setOrder(initialOrder);
       savePaidOrder(initialOrder);
+      trackPurchase(initialOrder);
       return;
     }
 
@@ -64,6 +66,7 @@ export const ThankYouPage: React.FC<ThankYouPageProps> = ({ initialOrder, onRetu
       if (sessionStored) {
         const parsed = JSON.parse(sessionStored);
         setOrder(parsed);
+        trackPurchase(parsed);
         return;
       }
 
@@ -72,6 +75,7 @@ export const ThankYouPage: React.FC<ThankYouPageProps> = ({ initialOrder, onRetu
       if (localStored) {
         const parsed = JSON.parse(localStored);
         setOrder(parsed);
+        trackPurchase(parsed);
         return;
       }
 
@@ -90,6 +94,7 @@ export const ThankYouPage: React.FC<ThankYouPageProps> = ({ initialOrder, onRetu
         };
         setOrder(parsedOrder);
         savePaidOrder(parsedOrder);
+        trackPurchase(parsedOrder);
         return;
       }
     } catch (e) {
@@ -215,6 +220,15 @@ export const ThankYouPage: React.FC<ThankYouPageProps> = ({ initialOrder, onRetu
             }),
           }).catch(() => {});
         }
+
+        // Track ₹99 Bump Upgrade Purchase on Meta Pixel
+        trackPurchase({
+          paymentId: response.razorpay_payment_id || `pay_ty_up_${Date.now()}`,
+          email: order.email,
+          phone: order.phone,
+          hasBump: true,
+          amount: 99,
+        });
 
         setIsUpgrading(false);
         const upgradedOrder: OrderData = {
