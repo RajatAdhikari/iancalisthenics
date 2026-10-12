@@ -12,7 +12,18 @@ declare global {
 }
 
 const FIRED_PURCHASES_KEY = 'ian_calisthenics_fired_pixel_purchases';
-const HISTORICAL_SEED_IDS = ['pay_Tm9WPF5eFrxlfn', 'pay_T1y5H8hvhQsYV'];
+const HISTORICAL_SEED_IDS = [
+  'pay_Tn0tfdBHiyoX0l',
+  'pay_Tmw0IEo5gLTiPG',
+  'pay_TmsUdcymj99Ijt',
+  'pay_Tms9oAK8SVvN9K',
+  'pay_TmquzRbPV77nGj',
+  'pay_TmpHYATedSqIfB',
+  'pay_TmneXhKOWkS1a8',
+  'pay_TmdmqOWlC61nez',
+  'pay_Tm9WPF5eFrxlfn',
+  'pay_T1y5H8hvhQsYV',
+];
 
 const hasPurchaseFired = (paymentId: string): boolean => {
   if (!paymentId) return false;
@@ -174,8 +185,8 @@ export const trackAddPaymentInfo = (email: string, phone: string, totalAmount: n
 };
 
 /**
- * Fires ONLY when payment is verified & completed (or on Thank You Page if not yet fired for that paymentId).
- * Deduplicated by paymentId so refreshing the Thank You page never double-counts conversions!
+ * Fires ONLY when a brand-new Razorpay payment is verified & completed right now.
+ * Never fires for returning customers logging in on later days, shared ?payment_id= links, or page refreshes.
  */
 export const trackPurchase = (order: {
   paymentId: string;
@@ -183,11 +194,30 @@ export const trackPurchase = (order: {
   phone?: string;
   amount: number;
   hasBump: boolean;
+  timestamp?: number;
+  isReturning?: boolean;
 }) => {
   if (typeof window === 'undefined' || typeof window.fbq !== 'function') return;
   if (!order || !order.paymentId) return;
 
-  // Do not fire duplicate Purchase events for the same paymentId (e.g., on page refresh or returning customer login)
+  // Never fire for returning customer lookups or demo/manual fallback IDs
+  if (order.isReturning) return;
+  if (
+    !order.paymentId.startsWith('pay_') ||
+    order.paymentId.startsWith('pay_verified_') ||
+    order.paymentId.startsWith('pay_demo_') ||
+    order.paymentId === 'pay_live_verified'
+  ) {
+    return;
+  }
+
+  // Never fire if payment was created more than 15 minutes ago (prevents yesterday's buyer from firing Purchase today)
+  if (order.timestamp && Math.abs(Date.now() - order.timestamp) > 15 * 60 * 1000) {
+    markPurchaseFired(order.paymentId);
+    return;
+  }
+
+  // Do not fire duplicate Purchase events for the same paymentId
   if (hasPurchaseFired(order.paymentId)) {
     return;
   }

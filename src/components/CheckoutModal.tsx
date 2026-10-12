@@ -37,6 +37,7 @@ export interface OrderData {
   hasBump: boolean;
   amount: number;
   timestamp: number;
+  isReturning?: boolean;
 }
 
 interface CheckoutModalProps {
@@ -148,7 +149,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
       // If customer already owns everything OR did not select bump, redirect directly!
       if (!hasBump || matchedOrder.hasBump) {
         if (onPaymentSuccess) {
-          onPaymentSuccess(matchedOrder);
+          onPaymentSuccess({ ...matchedOrder, isReturning: true });
         }
         handleClose();
         return;
@@ -678,7 +679,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
                   type="button"
                   onClick={() => {
                     if (onPaymentSuccess) {
-                      onPaymentSuccess(existingOrder);
+                      onPaymentSuccess({ ...existingOrder, isReturning: true });
                     }
                     handleClose();
                   }}

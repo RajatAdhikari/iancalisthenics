@@ -33,6 +33,7 @@ interface OrderData {
   amount: number;
   timestamp: number;
   token?: string;
+  isReturning?: boolean;
 }
 
 interface ThankYouPageProps {
@@ -61,7 +62,9 @@ export const ThankYouPage: React.FC<ThankYouPageProps> = ({ initialOrder, onRetu
     if (initialOrder) {
       setOrder(initialOrder);
       savePaidOrder(initialOrder);
-      trackPurchase(initialOrder);
+      if (!initialOrder.isReturning) {
+        trackPurchase(initialOrder);
+      }
       return;
     }
 
@@ -70,27 +73,25 @@ export const ThankYouPage: React.FC<ThankYouPageProps> = ({ initialOrder, onRetu
       const params = new URLSearchParams(window.location.search);
       const pid = params.get('payment_id') || params.get('razorpay_payment_id');
       if (pid && pid.startsWith('pay_')) {
-        const hasBumpParam = params.get('bump') === '1' || params.get('has_bump') === 'true';
         const matchedLocal = findExistingOrder('', pid);
-        const parsedOrder: OrderData = matchedLocal || {
-          paymentId: pid,
-          email: params.get('email') || 'verified_buyer@email.com',
-          phone: params.get('phone') || '+91 98XXXXXXXX',
-          hasBump: hasBumpParam,
-          amount: hasBumpParam ? 588 : 489,
-          timestamp: Date.now(),
-        };
-        setOrder(parsedOrder);
-        savePaidOrder(parsedOrder);
-        trackPurchase(parsedOrder);
+        if (matchedLocal) {
+          setOrder(matchedLocal);
+          savePaidOrder(matchedLocal);
+          return;
+        }
 
-        // Also sync exact amount & bump status from Razorpay live API in background
-        verifyOrderWithServer({ paymentId: pid }).then((liveOrder) => {
-          if (liveOrder) {
-            setOrder(liveOrder);
-            trackPurchase(liveOrder);
-          }
-        });
+        // Verify payment ID live with Razorpay API before unlocking
+        setIsVerifying(true);
+        verifyOrderWithServer({ paymentId: pid })
+          .then((liveOrder) => {
+            if (liveOrder) {
+              setOrder(liveOrder);
+              savePaidOrder(liveOrder);
+              // Only fire Purchase if this payment happened in the last 10 minutes
+              trackPurchase(liveOrder);
+            }
+          })
+          .finally(() => setIsVerifying(false));
         return;
       }
 
@@ -99,7 +100,6 @@ export const ThankYouPage: React.FC<ThankYouPageProps> = ({ initialOrder, onRetu
       if (sessionStored) {
         const parsed = JSON.parse(sessionStored);
         setOrder(parsed);
-        trackPurchase(parsed);
         return;
       }
 
@@ -108,7 +108,6 @@ export const ThankYouPage: React.FC<ThankYouPageProps> = ({ initialOrder, onRetu
       if (localStored) {
         const parsed = JSON.parse(localStored);
         setOrder(parsed);
-        trackPurchase(parsed);
         return;
       }
 
@@ -176,27 +175,13 @@ export const ThankYouPage: React.FC<ThankYouPageProps> = ({ initialOrder, onRetu
       if (liveVerified) {
         setOrder(liveVerified);
         savePaidOrder(liveVerified);
-        trackPurchase(liveVerified);
         confetti({ particleCount: 100, spread: 70 });
         return;
       }
 
-      if (!trimmedInput.startsWith('pay_') && trimmedInput.replace(/\D/g, '').length < 10 && trimmedInput !== 'demo_admin_preview') {
-        setVerificationError('No verified payment found for those details. Please enter the exact Phone Number, Email, or Payment ID ("pay_...") used during payment.');
-        return;
-      }
-
-      const verifiedOrder: OrderData = {
-        paymentId: trimmedInput.startsWith('pay_') ? trimmedInput : `pay_verified_${Date.now()}`,
-        email: trimmedEmail || 'verified_customer@email.com',
-        phone: trimmedInput.length >= 10 ? `+91 ${trimmedInput}` : '+91 Verified',
-        hasBump: false,
-        amount: 489,
-        timestamp: Date.now(),
-      };
-      setOrder(verifiedOrder);
-      savePaidOrder(verifiedOrder);
-      confetti({ particleCount: 80, spread: 60 });
+      setVerificationError(
+        'No verified Razorpay payment found for those details. Please enter the exact Phone Number, Email, or Payment ID ("pay_...") used during payment.'
+      );
     } finally {
       setIsVerifying(false);
     }
