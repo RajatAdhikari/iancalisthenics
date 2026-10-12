@@ -17,7 +17,12 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { RAZORPAY_CONFIG } from '../config/payment';
-import { findExistingOrder, savePaidOrder } from '../utils/customerOrders';
+import {
+  findExistingOrder,
+  savePaidOrder,
+  getPendingOrder,
+  verifyOrderWithServer,
+} from '../utils/customerOrders';
 import { trackPurchase } from '../utils/metaPixel';
 
 interface OrderData {
@@ -50,7 +55,7 @@ export const ThankYouPage: React.FC<ThankYouPageProps> = ({ initialOrder, onRetu
     confetti({
       particleCount: 100,
       spread: 70,
-      origin: { y: 0.6 }
+      origin: { y: 0.6 },
     });
 
     if (initialOrder) {
@@ -61,7 +66,35 @@ export const ThankYouPage: React.FC<ThankYouPageProps> = ({ initialOrder, onRetu
     }
 
     try {
-      // 1. Try sessionStorage
+      // 1. Try URL query params first (e.g. ?payment_id=pay_xxx&bump=1 or ?razorpay_payment_id=pay_xxx)
+      const params = new URLSearchParams(window.location.search);
+      const pid = params.get('payment_id') || params.get('razorpay_payment_id');
+      if (pid && pid.startsWith('pay_')) {
+        const hasBumpParam = params.get('bump') === '1' || params.get('has_bump') === 'true';
+        const matchedLocal = findExistingOrder('', pid);
+        const parsedOrder: OrderData = matchedLocal || {
+          paymentId: pid,
+          email: params.get('email') || 'verified_buyer@email.com',
+          phone: params.get('phone') || '+91 98XXXXXXXX',
+          hasBump: hasBumpParam,
+          amount: hasBumpParam ? 588 : 489,
+          timestamp: Date.now(),
+        };
+        setOrder(parsedOrder);
+        savePaidOrder(parsedOrder);
+        trackPurchase(parsedOrder);
+
+        // Also sync exact amount & bump status from Razorpay live API in background
+        verifyOrderWithServer({ paymentId: pid }).then((liveOrder) => {
+          if (liveOrder) {
+            setOrder(liveOrder);
+            trackPurchase(liveOrder);
+          }
+        });
+        return;
+      }
+
+      // 2. Try sessionStorage
       const sessionStored = sessionStorage.getItem('ian_calisthenics_order');
       if (sessionStored) {
         const parsed = JSON.parse(sessionStored);
@@ -70,7 +103,7 @@ export const ThankYouPage: React.FC<ThankYouPageProps> = ({ initialOrder, onRetu
         return;
       }
 
-      // 2. Try localStorage
+      // 3. Try localStorage
       const localStored = localStorage.getItem('ian_calisthenics_last_order');
       if (localStored) {
         const parsed = JSON.parse(localStored);
@@ -79,23 +112,22 @@ export const ThankYouPage: React.FC<ThankYouPageProps> = ({ initialOrder, onRetu
         return;
       }
 
-      // 3. Try URL query params (e.g. ?payment_id=pay_xxx&bump=1)
-      const params = new URLSearchParams(window.location.search);
-      const pid = params.get('payment_id');
-      if (pid && pid.startsWith('pay_')) {
-        const hasBump = params.get('bump') === '1' || params.get('has_bump') === 'true';
-        const parsedOrder: OrderData = {
-          paymentId: pid,
-          email: params.get('email') || 'verified_buyer@email.com',
-          phone: params.get('phone') || '+91 98XXXXXXXX',
-          hasBump: hasBump,
-          amount: hasBump ? 588 : 489,
-          timestamp: Date.now()
-        };
-        setOrder(parsedOrder);
-        savePaidOrder(parsedOrder);
-        trackPurchase(parsedOrder);
-        return;
+      // 4. Try pending UPI order verification against Razorpay server
+      const pending = getPendingOrder();
+      if (pending) {
+        setIsVerifying(true);
+        verifyOrderWithServer({
+          orderId: pending.orderId,
+          email: pending.email,
+          phone: pending.phone,
+        })
+          .then((liveOrder) => {
+            if (liveOrder) {
+              setOrder(liveOrder);
+              trackPurchase(liveOrder);
+            }
+          })
+          .finally(() => setIsVerifying(false));
       }
     } catch (e) {
       console.error('Error loading order data:', e);
@@ -111,7 +143,7 @@ export const ThankYouPage: React.FC<ThankYouPageProps> = ({ initialOrder, onRetu
   };
 
   // Anti-cheat verification fallback: if someone opens /thank-you directly
-  const handleManualVerification = (e: React.FormEvent) => {
+  const handleManualVerification = async (e: React.FormEvent) => {
     e.preventDefault();
     setVerificationError('');
 
@@ -119,11 +151,11 @@ export const ThankYouPage: React.FC<ThankYouPageProps> = ({ initialOrder, onRetu
     const trimmedEmail = manualEmail.trim();
 
     if (!trimmedInput && !trimmedEmail) {
-      setVerificationError('Please enter your Razorpay Payment ID or Phone Number');
+      setVerificationError('Please enter your Razorpay Payment ID, Phone Number, or Email');
       return;
     }
 
-    // Check if phone or email or Payment ID matches an existing paid order
+    // 1. Check if phone or email or Payment ID matches a known paid order
     const matched = findExistingOrder(trimmedEmail, trimmedInput);
     if (matched) {
       setOrder(matched);
@@ -132,26 +164,42 @@ export const ThankYouPage: React.FC<ThankYouPageProps> = ({ initialOrder, onRetu
       return;
     }
 
-    if (!trimmedInput.startsWith('pay_') && trimmedInput.length < 10 && trimmedInput !== 'demo_admin_preview') {
-      setVerificationError('Invalid entry. Please enter your 10-digit phone number or Payment ID starting with "pay_".');
-      return;
-    }
-
     setIsVerifying(true);
-    setTimeout(() => {
-      setIsVerifying(false);
+    try {
+      // 2. Verify live against Razorpay API (by Payment ID, Phone, or Email)
+      const liveVerified = await verifyOrderWithServer({
+        paymentId: trimmedInput.startsWith('pay_') ? trimmedInput : undefined,
+        email: trimmedEmail,
+        phone: trimmedInput,
+      });
+
+      if (liveVerified) {
+        setOrder(liveVerified);
+        savePaidOrder(liveVerified);
+        trackPurchase(liveVerified);
+        confetti({ particleCount: 100, spread: 70 });
+        return;
+      }
+
+      if (!trimmedInput.startsWith('pay_') && trimmedInput.replace(/\D/g, '').length < 10 && trimmedInput !== 'demo_admin_preview') {
+        setVerificationError('No verified payment found for those details. Please enter the exact Phone Number, Email, or Payment ID ("pay_...") used during payment.');
+        return;
+      }
+
       const verifiedOrder: OrderData = {
         paymentId: trimmedInput.startsWith('pay_') ? trimmedInput : `pay_verified_${Date.now()}`,
         email: trimmedEmail || 'verified_customer@email.com',
-        phone: trimmedInput.length === 10 ? `+91 ${trimmedInput}` : '+91 Verified',
+        phone: trimmedInput.length >= 10 ? `+91 ${trimmedInput}` : '+91 Verified',
         hasBump: false,
         amount: 489,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       };
       setOrder(verifiedOrder);
       savePaidOrder(verifiedOrder);
       confetti({ particleCount: 80, spread: 60 });
-    }, 600);
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
   // Post-purchase upsell for users who only paid ₹489: allow upgrading for ₹99

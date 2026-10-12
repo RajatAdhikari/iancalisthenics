@@ -1,8 +1,25 @@
-// Customer Orders & Persistent Access Registry
+// Customer Orders & Persistent Access Registry + Live Razorpay Server Sync
 import { OrderData } from '../components/CheckoutModal';
 
-// Seed list of verified purchases (e.g. user verified live payment)
+export interface PendingOrderData {
+  orderId?: string;
+  email: string;
+  phone: string;
+  hasBump: boolean;
+  amount: number;
+  timestamp: number;
+}
+
+// Seed list of verified purchases
 const SEED_PAID_ORDERS: OrderData[] = [
+  {
+    paymentId: 'pay_TmsUdcymj99Ijt',
+    email: 'gaurav.e26@gmail.com',
+    phone: '+91 88264 01500',
+    hasBump: true,
+    amount: 588,
+    timestamp: 1728710280000,
+  },
   {
     paymentId: 'pay_Tm9WPF5eFrxlfn',
     email: 'rajatadhikari77@gmail.com',
@@ -22,6 +39,7 @@ const SEED_PAID_ORDERS: OrderData[] = [
 ];
 
 const STORAGE_KEY = 'ian_calisthenics_paid_customers';
+const PENDING_ORDER_KEY = 'ian_calisthenics_pending_order';
 
 export const getPaidOrders = (): OrderData[] => {
   try {
@@ -54,35 +72,77 @@ export const getPaidOrders = (): OrderData[] => {
 export const savePaidOrder = (order: OrderData) => {
   try {
     const current = getPaidOrders();
-    const exists = current.some((o) => o.paymentId === order.paymentId);
-    const updated = exists ? current : [order, ...current];
+    const existingIdx = current.findIndex((o) => o.paymentId === order.paymentId);
+    let updated: OrderData[];
+    if (existingIdx >= 0) {
+      updated = [...current];
+      updated[existingIdx] = { ...updated[existingIdx], ...order };
+    } else {
+      updated = [order, ...current];
+    }
 
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
     localStorage.setItem('ian_calisthenics_last_order', JSON.stringify(order));
     sessionStorage.setItem('ian_calisthenics_order', JSON.stringify(order));
+    clearPendingOrder();
   } catch (e) {
     console.error('Failed to save order to localStorage:', e);
   }
 };
 
+export const savePendingOrder = (pending: PendingOrderData) => {
+  try {
+    localStorage.setItem(PENDING_ORDER_KEY, JSON.stringify(pending));
+  } catch {}
+};
+
+export const getPendingOrder = (): PendingOrderData | null => {
+  try {
+    const raw = localStorage.getItem(PENDING_ORDER_KEY);
+    if (!raw) return null;
+    const parsed: PendingOrderData = JSON.parse(raw);
+    // Expire pending orders older than 2 hours
+    if (Date.now() - (parsed.timestamp || 0) > 2 * 60 * 60 * 1000) {
+      localStorage.removeItem(PENDING_ORDER_KEY);
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+};
+
+export const clearPendingOrder = () => {
+  try {
+    localStorage.removeItem(PENDING_ORDER_KEY);
+  } catch {}
+};
+
 export const normalizePhone = (phone: string): string => {
-  const digits = phone.replace(/\D/g, '');
+  const digits = (phone || '').replace(/\D/g, '');
   return digits.length >= 10 ? digits.slice(-10) : digits;
 };
 
 export const normalizeEmail = (email: string): string => {
-  return email.trim().toLowerCase();
+  return (email || '').trim().toLowerCase();
 };
 
-export const findExistingOrder = (email: string, phone: string): OrderData | null => {
-  const normPhone = normalizePhone(phone);
+export const findExistingOrder = (email: string, phoneOrPaymentId: string): OrderData | null => {
+  const trimmedInput = (phoneOrPaymentId || '').trim();
+  const normPhone = normalizePhone(trimmedInput);
   const normEmail = normalizeEmail(email);
+
+  const orders = getPaidOrders();
+
+  // Direct Payment ID match
+  if (trimmedInput.startsWith('pay_')) {
+    const byPid = orders.find((o) => o.paymentId.toLowerCase() === trimmedInput.toLowerCase());
+    if (byPid) return byPid;
+  }
 
   if (normPhone.length < 10 && !normEmail.includes('@')) {
     return null;
   }
-
-  const orders = getPaidOrders();
 
   for (const o of orders) {
     const orderPhone = normalizePhone(o.phone);
@@ -100,4 +160,32 @@ export const findExistingOrder = (email: string, phone: string): OrderData | nul
   }
 
   return null;
+};
+
+/**
+ * Queries live Razorpay API via /api/verify-customer to check if an orderId, paymentId, email, or phone
+ * has already completed payment (especially when mobile UPI app switch reloads or backgrounds the browser).
+ */
+export const verifyOrderWithServer = async (params: {
+  orderId?: string;
+  paymentId?: string;
+  email?: string;
+  phone?: string;
+}): Promise<OrderData | null> => {
+  try {
+    const res = await fetch('/api/verify-customer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data && data.verified && data.order && data.order.paymentId) {
+      savePaidOrder(data.order);
+      return data.order as OrderData;
+    }
+    return null;
+  } catch {
+    return null;
+  }
 };

@@ -15,7 +15,12 @@ import {
   Zap
 } from 'lucide-react';
 import { RAZORPAY_CONFIG } from '../config/payment';
-import { findExistingOrder, savePaidOrder } from '../utils/customerOrders';
+import {
+  findExistingOrder,
+  savePaidOrder,
+  savePendingOrder,
+  verifyOrderWithServer,
+} from '../utils/customerOrders';
 import { trackBumpAddToCart, trackAddPaymentInfo, trackPurchase, setMetaAdvancedMatching } from '../utils/metaPixel';
 import confetti from 'canvas-confetti';
 
@@ -130,12 +135,20 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
     // Update Meta Pixel Advanced Matching with customer's email & phone
     setMetaAdvancedMatching(email, phone);
 
-    // 🚀 RETURNING CUSTOMER CHECK: If details match an existing payment, redirect directly to thank you page!
-    if (existingOrder) {
+    // 🚀 RETURNING CUSTOMER CHECK (Local + Live Razorpay Server Check):
+    // If details match an existing payment, redirect directly to thank you page!
+    let matchedOrder = existingOrder;
+    if (!matchedOrder) {
+      setIsProcessing(true);
+      matchedOrder = await verifyOrderWithServer({ email, phone });
+      setIsProcessing(false);
+    }
+
+    if (matchedOrder) {
       // If customer already owns everything OR did not select bump, redirect directly!
-      if (!hasBump || existingOrder.hasBump) {
+      if (!hasBump || matchedOrder.hasBump) {
         if (onPaymentSuccess) {
-          onPaymentSuccess(existingOrder);
+          onPaymentSuccess(matchedOrder);
         }
         handleClose();
         return;
@@ -160,7 +173,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
               customer_email: email,
               customer_phone: phone,
               upgrade_type: 'Big Banana Maxxing Bump Offer (₹99)',
-              parent_payment: existingOrder.paymentId,
+              parent_payment: matchedOrder.paymentId,
             },
           }),
         });
@@ -172,12 +185,21 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
         setIsProcessing(false);
       }
 
+      savePendingOrder({
+        orderId: upgradeOrderId,
+        email,
+        phone,
+        hasBump: true,
+        amount: matchedOrder.amount + 99,
+        timestamp: Date.now(),
+      });
+
       const options: any = {
         key: activeKey,
         amount: upgradeAmount * 100, // 9900 paise
         currency: RAZORPAY_CONFIG.currency,
         name: RAZORPAY_CONFIG.companyName,
-        description: 'Upgrade: Big Banana Maxxing Men\'s Protocol',
+        description: "Upgrade: Big Banana Maxxing Men's Protocol",
         image: window.location.origin + '/images/ian-hero-physique.jpg',
         prefill: {
           email: email,
@@ -187,7 +209,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
           customer_email: email,
           customer_phone: phone,
           upgrade_type: 'Big Banana Maxxing Bump Offer (₹99)',
-          parent_payment: existingOrder.paymentId,
+          parent_payment: matchedOrder.paymentId,
         },
         theme: {
           color: '#3b82f6',
@@ -217,19 +239,32 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
           });
 
           const upgradedOrder: OrderData = {
-            paymentId: `${existingOrder.paymentId} + ${response.razorpay_payment_id || 'pay_bump_upgrade'}`,
+            paymentId: `${matchedOrder.paymentId} + ${response.razorpay_payment_id || 'pay_bump_upgrade'}`,
             email: email,
             phone: phone.startsWith('+91') ? phone : '+91' + phone,
             hasBump: true,
-            amount: existingOrder.amount + 99,
-            timestamp: Date.now()
+            amount: matchedOrder.amount + 99,
+            timestamp: Date.now(),
           };
           savePaidOrder(upgradedOrder);
           if (onPaymentSuccess) {
             onPaymentSuccess(upgradedOrder);
           }
           handleClose();
-        }
+        },
+        modal: {
+          ondismiss: async function () {
+            const verified = await verifyOrderWithServer({
+              orderId: upgradeOrderId,
+              email,
+              phone,
+            });
+            if (verified && onPaymentSuccess) {
+              onPaymentSuccess({ ...verified, hasBump: true });
+              handleClose();
+            }
+          },
+        },
       };
 
       if (upgradeOrderId) {
@@ -296,6 +331,17 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
       setIsProcessing(false);
     }
 
+    // Save pending order BEFORE opening Razorpay so if mobile UPI app switch reloads or backgrounds the browser,
+    // App.tsx automatically detects the completed payment and redirects to the Thank You page!
+    savePendingOrder({
+      orderId,
+      email,
+      phone,
+      hasBump,
+      amount: totalAmount,
+      timestamp: Date.now(),
+    });
+
     const options: any = {
       key: activeKey,
       amount: totalAmount * 100, // paise (48900 or 58800)
@@ -340,7 +386,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
           phone: phone.startsWith('+91') ? phone : '+91' + phone,
           hasBump: hasBump,
           amount: totalAmount,
-          timestamp: Date.now()
+          timestamp: Date.now(),
         };
 
         // 🎯 Fire Meta Pixel Purchase Event (Deduplicated by paymentId)
@@ -363,8 +409,17 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
         }
       },
       modal: {
-        ondismiss: function () {
-          console.log('Razorpay modal closed');
+        ondismiss: async function () {
+          // On mobile UPI, if user paid in GPay/PhonePe and closed the Razorpay overlay, check payment status right away!
+          const verified = await verifyOrderWithServer({
+            orderId,
+            email,
+            phone,
+          });
+          if (verified && onPaymentSuccess) {
+            onPaymentSuccess(verified);
+            handleClose();
+          }
         },
       },
     };
