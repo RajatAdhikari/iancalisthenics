@@ -8,6 +8,9 @@ import { CurriculumPillars } from './components/CurriculumPillars';
 import { StudentResults } from './components/StudentResults';
 import { OfferPricing } from './components/OfferPricing';
 import { FaqSection } from './components/FaqSection';
+import { ProgressionLadder } from './components/ProgressionLadder';
+import { ComparisonTable } from './components/ComparisonTable';
+import { ExitIntentModal } from './components/ExitIntentModal';
 import { AdComplianceModal } from './components/AdComplianceModal';
 import { StickyMobileBar } from './components/StickyMobileBar';
 import { LiveSalesNotification } from './components/LiveSalesNotification';
@@ -163,11 +166,14 @@ export const App: React.FC = () => {
         <Navbar onOpenCheckout={openCheckout} />
       </header>
 
-      {/* Hero Section (With mobile-first physique image right under headline) */}
+      {/* Hero Section (With mobile-first physique image & auto-playing video) */}
       <HeroSection onOpenCheckout={openCheckout} />
 
       {/* Storyline & Authority (Ian's philosophy, gym vs calisthenics, inclusivity) */}
       <AuthorityStory onOpenCheckout={openCheckout} />
+
+      {/* 🚀 NEW: Level 0 to Superhuman Progression Ladder (Eliminates beginner intimidation) */}
+      <ProgressionLadder onOpenCheckout={openCheckout} />
 
       {/* Calisthenics Skills Showcase (Muscle-ups, Planche, Handstand) */}
       <SkillShowcase onOpenCheckout={openCheckout} />
@@ -175,10 +181,13 @@ export const App: React.FC = () => {
       {/* Complete 5-Pillar Curriculum (Zero Foundation to Indian Diet) */}
       <CurriculumPillars onOpenCheckout={openCheckout} />
 
-      {/* Student Results & Real Proof (Enfy & JAH2303 community wins) */}
+      {/* ⚡ NEW: "Free YouTube vs. Ian Barseagle Masterclass" (Eliminates "Why pay?" objection) */}
+      <ComparisonTable onOpenCheckout={openCheckout} />
+
+      {/* Student Results & Real Proof (Celebrity Hrithik benchmark + Enfy & JAH2303 community wins) */}
       <StudentResults onOpenCheckout={openCheckout} />
 
-      {/* Offer Stack & Pricing (₹15,000 -> ₹489 anchor) */}
+      {/* Offer Stack & Pricing (₹15,000 -> ₹489 anchor + 30-Day Guarantee + 4 Free Bonuses) */}
       <OfferPricing onOpenCheckout={openCheckout} />
 
       {/* Frequently Asked Questions */}
@@ -192,6 +201,9 @@ export const App: React.FC = () => {
 
       {/* Live Sales Notifications (10 Indian Real-Time Buyers) */}
       <LiveSalesNotification />
+
+      {/* 🛑 NEW: Exit-Intent Recovery Modal (Catches abandoning visitors) */}
+      <ExitIntentModal onOpenCheckout={openCheckout} />
 
       {/* 🚀 High-Converting Direct Razorpay Checkout Modal With Order Bump Offer 🚀 */}
       <CheckoutModal 

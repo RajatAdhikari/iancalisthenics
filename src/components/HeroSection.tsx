@@ -493,6 +493,12 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onOpenCheckout }) => {
               Build A <span className="text-gradient-emerald">Greek-God</span> Physique Without Gyms Or Heavy Weights
             </h1>
 
+            {/* 🟢 Beginner Reassurance Callout */}
+            <div className="mt-3 inline-flex items-center gap-2 bg-emerald-950/80 border border-emerald-500/40 px-3.5 py-1.5 rounded-xl text-xs text-emerald-300 font-semibold shadow-inner">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping flex-shrink-0" />
+              <span>0 Pull-ups Right Now? Start from Day 1 with Ground & Wall Regressions!</span>
+            </div>
+
             {/* 📱 MOBILE HERO VIDEO REEL + GOOGLE DRIVE PREVIEW: Auto-plays muted right below the headline! */}
             <div className="block lg:hidden my-4">
               <HeroVideoReelCard isMobile={true} onOpenCheckout={handleCtaClick} />
@@ -561,15 +567,15 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onOpenCheckout }) => {
               </div>
             </div>
 
-            <div className="mt-3 flex items-center justify-center lg:justify-start gap-2 sm:gap-3 text-[10px] sm:text-xs text-zinc-400">
+            <div className="mt-3 flex flex-wrap items-center justify-center lg:justify-start gap-2 sm:gap-3 text-[10px] sm:text-xs text-zinc-400">
               <span className="flex items-center gap-1">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                Instant Google Drive & Email Delivery
+                Instant Access Link on Screen + Email
               </span>
               <span>•</span>
-              <span>100% Secured by Razorpay</span>
+              <span className="text-amber-300 font-semibold">30-Day Money-Back Guarantee</span>
               <span>•</span>
-              <span>Lifetime Access</span>
+              <span>100% Secured by Razorpay</span>
             </div>
           </div>
 
