@@ -8,11 +8,30 @@ declare global {
   interface Window {
     fbq?: (...args: any[]) => void;
     _fbq?: any;
+    __FIRED_PURCHASES_SET__?: Set<string>;
   }
 }
 
 const FIRED_PURCHASES_KEY = 'ian_calisthenics_fired_pixel_purchases';
+
+// All historical paid Razorpay IDs (Never fire duplicate Purchase on reload or returning visits)
 const HISTORICAL_SEED_IDS = [
+  'pay_To2uhIamEhY7tp',
+  'pay_To1t47VBGbg96W',
+  'pay_TnwlohwGqdbhEX',
+  'pay_TnrVidmVvIH65L',
+  'pay_Tnq05dMsqr64DG',
+  'pay_TnkzjjrgjWLKwS',
+  'pay_TngwwDwImWrgTK',
+  'pay_Tnd0BFJwnkKliP',
+  'pay_Tnbb2AjHpTgRBm',
+  'pay_Tnb53bcZT7D7v9',
+  'pay_TnO2t7e7fW2GqO',
+  'pay_TnMVRJy3fa9Ugk',
+  'pay_TnHbtILiUy3hRr',
+  'pay_TnGtxyekdoiucP',
+  'pay_TnEulTT9s9IWke',
+  'pay_TnDl4l8pwCK23p',
   'pay_Tn0tfdBHiyoX0l',
   'pay_Tmw0IEo5gLTiPG',
   'pay_TmsUdcymj99Ijt',
@@ -21,30 +40,84 @@ const HISTORICAL_SEED_IDS = [
   'pay_TmpHYATedSqIfB',
   'pay_TmneXhKOWkS1a8',
   'pay_TmdmqOWlC61nez',
+  'pay_Tmb2z6a4byUqqn',
+  'pay_TmYuNimbQrhZum',
+  'pay_TmXbXZPVhDfE6j',
+  'pay_TmXXXGoX2BX8sN',
+  'pay_TmXXGDJLfY3IJU',
+  'pay_TmUu1Ad11KUOOv',
+  'pay_TmSbTfGtDaacLn',
+  'pay_TmJVa7npM5Cawh',
+  'pay_TmFaabXZQWOVjv',
+  'pay_TmERJt2mAZ9sTf',
+  'pay_TmBa1M7eHoACD2',
+  'pay_TmAFmF2I37WvAG',
   'pay_Tm9WPF5eFrxlfn',
   'pay_T1y5H8hvhQsYV',
 ];
 
+// Initialize in-memory set to guarantee zero duplicate fires even in private/in-app browsers
+if (typeof window !== 'undefined') {
+  if (!window.__FIRED_PURCHASES_SET__) {
+    window.__FIRED_PURCHASES_SET__ = new Set<string>(HISTORICAL_SEED_IDS);
+    try {
+      const raw = localStorage.getItem(FIRED_PURCHASES_KEY);
+      if (raw) {
+        const list: string[] = JSON.parse(raw);
+        list.forEach((id) => window.__FIRED_PURCHASES_SET__?.add(id));
+      }
+    } catch {}
+    try {
+      const rawSession = sessionStorage.getItem(FIRED_PURCHASES_KEY);
+      if (rawSession) {
+        const list: string[] = JSON.parse(rawSession);
+        list.forEach((id) => window.__FIRED_PURCHASES_SET__?.add(id));
+      }
+    } catch {}
+  }
+}
+
 const hasPurchaseFired = (paymentId: string): boolean => {
-  if (!paymentId) return false;
+  if (!paymentId) return true;
   if (HISTORICAL_SEED_IDS.includes(paymentId)) return true;
+  if (typeof window !== 'undefined' && window.__FIRED_PURCHASES_SET__?.has(paymentId)) {
+    return true;
+  }
   try {
     const raw = localStorage.getItem(FIRED_PURCHASES_KEY);
     const list: string[] = raw ? JSON.parse(raw) : [];
-    return list.includes(paymentId);
-  } catch {
-    return false;
-  }
+    if (list.includes(paymentId)) return true;
+  } catch {}
+  try {
+    const rawSession = sessionStorage.getItem(FIRED_PURCHASES_KEY);
+    const list: string[] = rawSession ? JSON.parse(rawSession) : [];
+    if (list.includes(paymentId)) return true;
+  } catch {}
+  return false;
 };
 
 const markPurchaseFired = (paymentId: string) => {
   if (!paymentId) return;
+  if (typeof window !== 'undefined') {
+    if (!window.__FIRED_PURCHASES_SET__) {
+      window.__FIRED_PURCHASES_SET__ = new Set<string>();
+    }
+    window.__FIRED_PURCHASES_SET__.add(paymentId);
+  }
   try {
     const raw = localStorage.getItem(FIRED_PURCHASES_KEY);
     const list: string[] = raw ? JSON.parse(raw) : [];
     if (!list.includes(paymentId)) {
       list.push(paymentId);
       localStorage.setItem(FIRED_PURCHASES_KEY, JSON.stringify(list));
+    }
+  } catch {}
+  try {
+    const rawSession = sessionStorage.getItem(FIRED_PURCHASES_KEY);
+    const list: string[] = rawSession ? JSON.parse(rawSession) : [];
+    if (!list.includes(paymentId)) {
+      list.push(paymentId);
+      sessionStorage.setItem(FIRED_PURCHASES_KEY, JSON.stringify(list));
     }
   } catch {}
 };
@@ -65,8 +138,6 @@ const USER_INFO_KEY = 'ian_calisthenics_user_info';
 
 /**
  * Sets Manual Advanced Matching parameters (em, ph, country) on the Meta Pixel
- * Resolves the "Set up manual advanced matching" warning in Meta Events Manager:
- * fbq('init', '1377946710945110', { em: 'email@email.com', ph: '1234567890' });
  */
 export const setMetaAdvancedMatching = (email?: string, phone?: string) => {
   if (typeof window === 'undefined') return;
@@ -87,10 +158,12 @@ export const setMetaAdvancedMatching = (email?: string, phone?: string) => {
     const cleanPhone = formattedPhone && formattedPhone.length >= 10 ? formattedPhone : savedPh;
 
     if (cleanEmail || cleanPhone) {
-      localStorage.setItem(
-        USER_INFO_KEY,
-        JSON.stringify({ em: cleanEmail, ph: cleanPhone })
-      );
+      try {
+        localStorage.setItem(
+          USER_INFO_KEY,
+          JSON.stringify({ em: cleanEmail, ph: cleanPhone })
+        );
+      } catch {}
     }
 
     if (typeof window.fbq === 'function') {
@@ -158,10 +231,8 @@ export const trackAddPaymentInfo = (email: string, phone: string, totalAmount: n
   if (typeof window === 'undefined' || typeof window.fbq !== 'function') return;
 
   try {
-    // 1. Update Manual Advanced Matching with customer's email & phone
     setMetaAdvancedMatching(email, phone);
 
-    // 2. Track Lead & AddPaymentInfo for campaign funnel optimization
     window.fbq('track', 'Lead', {
       content_name: 'Ian Barseagle Calisthenics Checkout Lead',
       value: totalAmount,
@@ -185,8 +256,8 @@ export const trackAddPaymentInfo = (email: string, phone: string, totalAmount: n
 };
 
 /**
- * Fires ONLY when a brand-new Razorpay payment is verified & completed right now.
- * Never fires for returning customers logging in on later days, shared ?payment_id= links, or page refreshes.
+ * Fires ONLY ONCE per verified Razorpay payment.
+ * Guarded by In-Memory Set, SessionStorage, LocalStorage, Historical Seed list, and 15-minute freshness check.
  */
 export const trackPurchase = (order: {
   paymentId: string;
@@ -200,7 +271,7 @@ export const trackPurchase = (order: {
   if (typeof window === 'undefined' || typeof window.fbq !== 'function') return;
   if (!order || !order.paymentId) return;
 
-  // Never fire for returning customer lookups or demo/manual fallback IDs
+  // Never fire for returning customer logins, manual looks, or test IDs
   if (order.isReturning) return;
   if (
     !order.paymentId.startsWith('pay_') ||
@@ -211,19 +282,22 @@ export const trackPurchase = (order: {
     return;
   }
 
-  // Never fire if payment was created more than 15 minutes ago (prevents yesterday's buyer from firing Purchase today)
+  // Never fire if payment was created more than 15 minutes ago (prevents past orders from firing again)
   if (order.timestamp && Math.abs(Date.now() - order.timestamp) > 15 * 60 * 1000) {
     markPurchaseFired(order.paymentId);
     return;
   }
 
-  // Do not fire duplicate Purchase events for the same paymentId
+  // STRICT IN-MEMORY + STORAGE DEDUPLICATION:
+  // If this payment was already fired anywhere in this session or in history, DO NOT FIRE!
   if (hasPurchaseFired(order.paymentId)) {
     return;
   }
 
+  // Mark immediately before dispatching to block any concurrent async calls
+  markPurchaseFired(order.paymentId);
+
   try {
-    // Ensure Advanced Matching data (email & phone) is attached before firing Purchase
     setMetaAdvancedMatching(order.email, order.phone);
 
     window.fbq(
@@ -246,8 +320,7 @@ export const trackPurchase = (order: {
       { eventID: order.paymentId }
     );
 
-    markPurchaseFired(order.paymentId);
-    console.log(`[Meta Pixel] Purchase tracked for ${order.paymentId} (₹${order.amount})`);
+    console.log(`[Meta Pixel] Verified Purchase tracked for ${order.paymentId} (₹${order.amount})`);
   } catch (e) {
     console.warn('Meta Purchase tracking error:', e);
   }

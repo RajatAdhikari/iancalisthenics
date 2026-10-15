@@ -56,9 +56,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Key ID & Key Secret handling (allows pasting directly in UI or config)
+  // Key ID handling (allows pasting directly in UI or config)
   const [customKey, setCustomKey] = useState('');
-  const [customSecret, setCustomSecret] = useState('');
   const [showKeyInput, setShowKeyInput] = useState(false);
 
   useEffect(() => {
@@ -69,11 +68,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
     } else if (saved) {
       setCustomKey(saved);
     }
-
-    const savedSecret = localStorage.getItem('razorpay_key_secret');
-    if (savedSecret) {
-      setCustomSecret(savedSecret);
-    }
   }, []);
 
   if (!isOpen) return null;
@@ -82,7 +76,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
   const existingOrder = findExistingOrder(email, phone);
 
   const activeKey = customKey.trim() || RAZORPAY_CONFIG.keyId;
-  const activeSecret = customSecret.trim() || RAZORPAY_CONFIG.keySecret || '';
   const isKeyPlaceholder = activeKey === 'rzp_live_DEMO_KEY' || activeKey.includes('DEMO_KEY') || !activeKey.startsWith('rzp_');
 
   const basePrice = RAZORPAY_CONFIG.basePrice; // 489
@@ -169,7 +162,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
             currency: RAZORPAY_CONFIG.currency,
             receipt: `rcpt_up_${Date.now()}`,
             keyId: activeKey,
-            keySecret: activeSecret,
             notes: {
               customer_email: email,
               customer_phone: phone,
@@ -225,7 +217,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
                 amount: upgradeAmount,
                 currency: RAZORPAY_CONFIG.currency,
                 keyId: activeKey,
-                keySecret: activeSecret,
               }),
             }).catch(() => {});
           }
@@ -310,7 +301,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
           currency: RAZORPAY_CONFIG.currency,
           receipt: `rcpt_${Date.now()}`,
           keyId: activeKey,
-          keySecret: activeSecret,
           notes: {
             customer_email: email,
             customer_phone: phone,
@@ -323,8 +313,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
       const orderData = await orderRes.json().catch(() => ({}));
       if (orderRes.ok && orderData.orderId) {
         orderId = orderData.orderId;
-      } else if (orderData.code === 'MISSING_KEY_SECRET') {
-        console.warn('Razorpay Key Secret not set yet — opening Key Secret setup for Auto-Capture');
       }
     } catch (err) {
       console.warn('Orders API endpoint unavailable, proceeding with direct payment:', err);
@@ -376,7 +364,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
               amount: totalAmount,
               currency: RAZORPAY_CONFIG.currency,
               keyId: activeKey,
-              keySecret: activeSecret,
             }),
           }).catch(() => {});
         }
@@ -390,9 +377,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
           timestamp: Date.now(),
         };
 
-        // 🎯 Fire Meta Pixel Purchase Event (Deduplicated by paymentId)
-        trackPurchase(orderData);
-
         // Persist order so customer is recognized in future visits
         savePaidOrder(orderData);
 
@@ -404,7 +388,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
           origin: { y: 0.6 },
         });
 
-        // Trigger redirection to thank you page
+        // Trigger redirection to thank you page (where trackPurchase is fired once)
         if (onPaymentSuccess) {
           onPaymentSuccess(orderData);
         }

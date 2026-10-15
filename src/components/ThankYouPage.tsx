@@ -62,9 +62,6 @@ export const ThankYouPage: React.FC<ThankYouPageProps> = ({ initialOrder, onRetu
     if (initialOrder) {
       setOrder(initialOrder);
       savePaidOrder(initialOrder);
-      if (!initialOrder.isReturning) {
-        trackPurchase(initialOrder);
-      }
       return;
     }
 
@@ -208,7 +205,6 @@ export const ThankYouPage: React.FC<ThankYouPageProps> = ({ initialOrder, onRetu
           currency: RAZORPAY_CONFIG.currency,
           receipt: `rcpt_ty_up_${Date.now()}`,
           keyId: RAZORPAY_CONFIG.keyId,
-          keySecret: RAZORPAY_CONFIG.keySecret,
           notes: {
             parent_payment_id: order.paymentId,
             upgrade_type: 'Big Banana Maxxing Bump Offer (₹99)',
@@ -249,7 +245,6 @@ export const ThankYouPage: React.FC<ThankYouPageProps> = ({ initialOrder, onRetu
               amount: RAZORPAY_CONFIG.bumpPrice,
               currency: RAZORPAY_CONFIG.currency,
               keyId: RAZORPAY_CONFIG.keyId,
-              keySecret: RAZORPAY_CONFIG.keySecret,
             }),
           }).catch(() => {});
         }

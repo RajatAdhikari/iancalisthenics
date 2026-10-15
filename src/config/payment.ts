@@ -1,8 +1,8 @@
 // Razorpay Payment Configuration & Course Delivery Links
+// Only public keyId is bundled in the frontend. All sensitive credentials remain securely on the server.
 export const RAZORPAY_CONFIG = {
-  // Configured with your live Razorpay Key ID:
+  // Public Razorpay Key ID used by client checkout:
   keyId: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_live_TkVGwV6gWcnuAO',
-  keySecret: import.meta.env.VITE_RAZORPAY_KEY_SECRET || 'qD4MONTwIrZpPeUen1l6lpCJ',
   companyName: 'Ian Barseagle Calisthenics',
   basePrice: 489,
   bumpPrice: 99,
