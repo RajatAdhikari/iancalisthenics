@@ -100,6 +100,10 @@
           }
         } catch (err) {}
 
+        // CRITICAL: Block Meta Pixel Automatic Configuration & Automatic Button Click Tracking
+        // This ensures Meta NEVER auto-tracks button clicks or form inputs as Purchases!
+        fbq('set', 'autoConfig', false, '1377946710945110');
+
         // Manual Advanced Matching (em, ph) hashed automatically by Meta Pixel using SHA-256
         fbq('init', '1377946710945110', userData);
       })();
@@ -115,8 +119,8 @@
       });
     </script>
     <!-- End Meta Pixel Code -->
-    <script type="module" crossorigin src="/assets/index-B8JF61iT.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-Dnff1I87.css">
+    <script type="module" crossorigin src="/assets/index-Bvk5p0OQ.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DlJ05E8E.css">
   </head>
   <body class="bg-[#09090b] text-zinc-100 antialiased selection:bg-emerald-500 selection:text-black overflow-x-hidden">
     <noscript>

@@ -23,7 +23,6 @@ import {
   getPendingOrder,
   verifyOrderWithServer,
 } from '../utils/customerOrders';
-import { trackPurchase } from '../utils/metaPixel';
 
 interface OrderData {
   paymentId: string;
@@ -84,8 +83,6 @@ export const ThankYouPage: React.FC<ThankYouPageProps> = ({ initialOrder, onRetu
             if (liveOrder) {
               setOrder(liveOrder);
               savePaidOrder(liveOrder);
-              // Only fire Purchase if this payment happened in the last 10 minutes
-              trackPurchase(liveOrder);
             }
           })
           .finally(() => setIsVerifying(false));
@@ -110,17 +107,14 @@ export const ThankYouPage: React.FC<ThankYouPageProps> = ({ initialOrder, onRetu
 
       // 4. Try pending UPI order verification against Razorpay server
       const pending = getPendingOrder();
-      if (pending) {
+      if (pending && pending.orderId) {
         setIsVerifying(true);
         verifyOrderWithServer({
           orderId: pending.orderId,
-          email: pending.email,
-          phone: pending.phone,
         })
           .then((liveOrder) => {
             if (liveOrder) {
               setOrder(liveOrder);
-              trackPurchase(liveOrder);
             }
           })
           .finally(() => setIsVerifying(false));

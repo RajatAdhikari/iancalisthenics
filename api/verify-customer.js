@@ -122,10 +122,16 @@ export default async function handler(req, res) {
         'GET',
         authHeader
       );
-      if (status === 200 && data && (data.status === 'captured' || data.status === 'authorized')) {
-        const order = await ensureCapturedAndFormat(data);
-        return res.status(200).json({ verified: true, order });
+      if (status === 200 && data) {
+        if (data.status === 'failed') {
+          return res.status(200).json({ verified: false, failed: true, error: data.error_description || 'Payment failed' });
+        }
+        if (data.status === 'captured' || data.status === 'authorized') {
+          const order = await ensureCapturedAndFormat(data);
+          return res.status(200).json({ verified: true, order });
+        }
       }
+      return res.status(200).json({ verified: false });
     }
 
     // 2. Order ID check (for automatic mobile UPI polling when customer returns from GPay/PhonePe/Paytm)
@@ -143,14 +149,19 @@ export default async function handler(req, res) {
           const order = await ensureCapturedAndFormat(paidItem);
           return res.status(200).json({ verified: true, order });
         }
+        const failedItem = data.items.find((item) => item.status === 'failed');
+        if (failedItem) {
+          return res.status(200).json({ verified: false, failed: true, error: 'Payment failed' });
+        }
       }
+      return res.status(200).json({ verified: false });
     }
 
-    // 3. Email / Phone lookup across recent Razorpay payments
+    // 3. Returning customer lookup (ONLY when explicitly checking existing access, never for pending orders)
     const normEmail = normalizeEmail(email);
     const normPhone = normalizePhone(phone);
 
-    if ((normEmail && normEmail.includes('@')) || normPhone.length === 10) {
+    if (!orderId && !paymentId && ((normEmail && normEmail.includes('@')) || normPhone.length === 10)) {
       const { status, data } = await razorpayRequest('/v1/payments?count=100', 'GET', authHeader);
       if (status === 200 && data && Array.isArray(data.items)) {
         const matchedItems = data.items.filter((item) => {
@@ -178,7 +189,7 @@ export default async function handler(req, res) {
 
           const primaryPayment = matchedItems[0];
           const order = await ensureCapturedAndFormat(primaryPayment, anyBump);
-          return res.status(200).json({ verified: true, order });
+          return res.status(200).json({ verified: true, order: { ...order, isReturning: true } });
         }
       }
     }

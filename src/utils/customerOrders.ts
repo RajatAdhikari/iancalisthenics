@@ -193,7 +193,7 @@ export const findExistingOrder = (email: string, phoneOrPaymentId: string): Orde
   // Direct Payment ID match
   if (trimmedInput.startsWith('pay_')) {
     const byPid = orders.find((o) => o.paymentId.toLowerCase() === trimmedInput.toLowerCase());
-    if (byPid) return byPid;
+    if (byPid) return { ...byPid, isReturning: true };
   }
 
   if (normPhone.length < 10 && !normEmail.includes('@')) {
@@ -206,12 +206,12 @@ export const findExistingOrder = (email: string, phoneOrPaymentId: string): Orde
 
     // If 10-digit phone matches
     if (normPhone.length === 10 && orderPhone === normPhone) {
-      return o;
+      return { ...o, isReturning: true };
     }
 
     // If valid email matches
     if (normEmail.includes('@') && orderEmail === normEmail) {
-      return o;
+      return { ...o, isReturning: true };
     }
   }
 
@@ -236,6 +236,10 @@ export const verifyOrderWithServer = async (params: {
     });
     if (!res.ok) return null;
     const data = await res.json();
+    if (data && data.failed) {
+      clearPendingOrder();
+      return null;
+    }
     if (data && data.verified && data.order && data.order.paymentId) {
       savePaidOrder(data.order);
       return data.order as OrderData;

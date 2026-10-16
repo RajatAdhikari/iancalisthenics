@@ -91,14 +91,12 @@ export const App: React.FC = () => {
     const checkPendingUpiPayment = async () => {
       if (isChecking || currentPage === 'thank-you') return;
       const pending = getPendingOrder();
-      if (!pending) return;
+      if (!pending || !pending.orderId) return;
 
       isChecking = true;
       try {
         const verified = await verifyOrderWithServer({
           orderId: pending.orderId,
-          email: pending.email,
-          phone: pending.phone,
         });
         if (verified) {
           handlePaymentSuccess(verified);

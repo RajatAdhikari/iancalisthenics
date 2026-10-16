@@ -19,9 +19,10 @@ import {
   findExistingOrder,
   savePaidOrder,
   savePendingOrder,
+  clearPendingOrder,
   verifyOrderWithServer,
 } from '../utils/customerOrders';
-import { trackBumpAddToCart, trackAddPaymentInfo, trackPurchase, setMetaAdvancedMatching } from '../utils/metaPixel';
+import { trackBumpAddToCart, trackAddPaymentInfo, markPaymentFailed, setMetaAdvancedMatching } from '../utils/metaPixel';
 import confetti from 'canvas-confetti';
 
 declare global {
@@ -187,6 +188,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
         timestamp: Date.now(),
       });
 
+      let bumpCompleted = false;
+      let bumpFailed = false;
+
       const options: any = {
         key: activeKey,
         amount: upgradeAmount * 100, // 9900 paise
@@ -208,6 +212,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
           color: '#3b82f6',
         },
         handler: function (response: any) {
+          bumpCompleted = true;
           if (response.razorpay_payment_id) {
             fetch('/api/capture-payment', {
               method: 'POST',
@@ -221,21 +226,13 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
             }).catch(() => {});
           }
 
-          // Track ₹99 Bump Purchase on Meta Pixel
-          trackPurchase({
+          // Single canonical payment tracking via onPaymentSuccess (prevents duplicate pixel fires)
+          const upgradedOrder: OrderData = {
             paymentId: response.razorpay_payment_id || `pay_up_${Date.now()}`,
             email: email,
             phone: phone.startsWith('+91') ? phone : '+91' + phone,
             hasBump: true,
             amount: upgradeAmount,
-          });
-
-          const upgradedOrder: OrderData = {
-            paymentId: `${matchedOrder.paymentId} + ${response.razorpay_payment_id || 'pay_bump_upgrade'}`,
-            email: email,
-            phone: phone.startsWith('+91') ? phone : '+91' + phone,
-            hasBump: true,
-            amount: matchedOrder.amount + 99,
             timestamp: Date.now(),
           };
           savePaidOrder(upgradedOrder);
@@ -246,14 +243,20 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
         },
         modal: {
           ondismiss: async function () {
+            if (bumpCompleted || bumpFailed) return;
+            if (!upgradeOrderId) {
+              clearPendingOrder();
+              return;
+            }
             const verified = await verifyOrderWithServer({
               orderId: upgradeOrderId,
-              email,
-              phone,
             });
             if (verified && onPaymentSuccess) {
+              bumpCompleted = true;
               onPaymentSuccess({ ...verified, hasBump: true });
               handleClose();
+            } else {
+              clearPendingOrder();
             }
           },
         },
@@ -265,6 +268,15 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
 
       try {
         const rzp = new window.Razorpay(options);
+        rzp.on('payment.failed', function (response: any) {
+          bumpFailed = true;
+          clearPendingOrder();
+          const failedId = response?.error?.metadata?.payment_id;
+          if (failedId) {
+            markPaymentFailed(failedId);
+          }
+          console.warn('[Razorpay] Bump Upgrade Payment Failed:', response.error);
+        });
         rzp.open();
         return;
       } catch (err: any) {
@@ -331,6 +343,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
       timestamp: Date.now(),
     });
 
+    let paymentCompleted = false;
+    let paymentFailed = false;
+
     const options: any = {
       key: activeKey,
       amount: totalAmount * 100, // paise (48900 or 58800)
@@ -354,6 +369,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
         color: '#10b981',
       },
       handler: function (response: any) {
+        paymentCompleted = true;
         // Redundancy: Attempt background auto-capture if API is active
         if (response.razorpay_payment_id) {
           fetch('/api/capture-payment', {
@@ -395,15 +411,24 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
       },
       modal: {
         ondismiss: async function () {
-          // On mobile UPI, if user paid in GPay/PhonePe and closed the Razorpay overlay, check payment status right away!
+          // If payment was already completed or explicitly marked as failed, do nothing!
+          if (paymentCompleted || paymentFailed) {
+            return;
+          }
+          // Only check if we have an active orderId (e.g. mobile UPI app switch)
+          if (!orderId) {
+            clearPendingOrder();
+            return;
+          }
           const verified = await verifyOrderWithServer({
             orderId,
-            email,
-            phone,
           });
           if (verified && onPaymentSuccess) {
+            paymentCompleted = true;
             onPaymentSuccess(verified);
             handleClose();
+          } else {
+            clearPendingOrder();
           }
         },
       },
@@ -417,13 +442,21 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
     try {
       const rzp = new window.Razorpay(options);
       rzp.on('payment.failed', function (response: any) {
+        paymentFailed = true;
+        clearPendingOrder();
+        const failedId = response?.error?.metadata?.payment_id;
+        if (failedId) {
+          markPaymentFailed(failedId);
+        }
+        console.warn('[Razorpay] Payment Failed:', response.error);
         alert(
           'Payment Error from Razorpay: ' +
-            (response.error.description || response.error.code || 'Please verify your Key ID in Razorpay Dashboard')
+            (response.error?.description || response.error?.code || 'Payment could not be completed. Please try again.')
         );
       });
       rzp.open();
     } catch (err: any) {
+      clearPendingOrder();
       alert('Failed to launch Razorpay: ' + err.message);
     }
   };

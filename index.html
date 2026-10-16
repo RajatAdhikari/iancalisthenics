@@ -100,6 +100,10 @@
           }
         } catch (err) {}
 
+        // CRITICAL: Block Meta Pixel Automatic Configuration & Automatic Button Click Tracking
+        // This ensures Meta NEVER auto-tracks button clicks or form inputs as Purchases!
+        fbq('set', 'autoConfig', false, '1377946710945110');
+
         // Manual Advanced Matching (em, ph) hashed automatically by Meta Pixel using SHA-256
         fbq('init', '1377946710945110', userData);
       })();

@@ -13,11 +13,28 @@ declare global {
 }
 
 const FIRED_PURCHASES_KEY = 'ian_calisthenics_fired_pixel_purchases';
+const FAILED_PAYMENTS_KEY = 'ian_calisthenics_failed_payments';
 
 // All historical paid Razorpay IDs (Never fire duplicate Purchase on reload or returning visits)
 const HISTORICAL_SEED_IDS = [
+  // 16 October 2026 captured payments
+  'pay_ToYVYOQ9rZfGyE',
+  'pay_ToYFY2yMHE8ov4',
+  'pay_ToWb0CEXyep57Q',
+  'pay_ToW6pe1XVBwy4R',
+  'pay_ToUdGsKBUFYeL4',
+  'pay_ToTA2xvvIUjL6S',
+  'pay_ToRvS2L3CI6cmn',
+  'pay_ToQ24vniEUgJsK',
+  'pay_ToOoq1XyhjHSqZ',
+  'pay_ToJFZ69mqlzUKv',
+  // 15 October 2026 captured payments
+  'pay_ToEqpOmRTssDwB',
+  'pay_ToElMHHCBATXi5',
+  'pay_To87F4DmDKpxI3',
   'pay_To2uhIamEhY7tp',
   'pay_To1t47VBGbg96W',
+  // 14 October 2026 & earlier captured payments
   'pay_TnwlohwGqdbhEX',
   'pay_TnrVidmVvIH65L',
   'pay_Tnq05dMsqr64DG',
@@ -56,7 +73,24 @@ const HISTORICAL_SEED_IDS = [
   'pay_T1y5H8hvhQsYV',
 ];
 
-// Initialize in-memory set to guarantee zero duplicate fires even in private/in-app browsers
+// Explicit blocklist of known failed/cancelled Razorpay payments (MUST NEVER TRIGGER PURCHASE)
+const HISTORICAL_FAILED_IDS = [
+  'pay_ToZhaW1LPKbSIe',
+  'pay_ToXikOGvOxFZvJ',
+  'pay_ToLxjKS9APrzo1',
+  'pay_To2TVh8JDoxyjm',
+];
+
+declare global {
+  interface Window {
+    fbq?: (...args: any[]) => void;
+    _fbq?: any;
+    __FIRED_PURCHASES_SET__?: Set<string>;
+    __FAILED_PAYMENTS_SET__?: Set<string>;
+  }
+}
+
+// Initialize in-memory sets to guarantee zero duplicate fires & 100% block of failed payments
 if (typeof window !== 'undefined') {
   if (!window.__FIRED_PURCHASES_SET__) {
     window.__FIRED_PURCHASES_SET__ = new Set<string>(HISTORICAL_SEED_IDS);
@@ -75,25 +109,85 @@ if (typeof window !== 'undefined') {
       }
     } catch {}
   }
+
+  if (!window.__FAILED_PAYMENTS_SET__) {
+    window.__FAILED_PAYMENTS_SET__ = new Set<string>(HISTORICAL_FAILED_IDS);
+    try {
+      const rawFailed = localStorage.getItem(FAILED_PAYMENTS_KEY);
+      if (rawFailed) {
+        const list: string[] = JSON.parse(rawFailed);
+        list.forEach((id) => window.__FAILED_PAYMENTS_SET__?.add(id));
+      }
+    } catch {}
+    try {
+      const rawFailedSession = sessionStorage.getItem(FAILED_PAYMENTS_KEY);
+      if (rawFailedSession) {
+        const list: string[] = JSON.parse(rawFailedSession);
+        list.forEach((id) => window.__FAILED_PAYMENTS_SET__?.add(id));
+      }
+    } catch {}
+  }
 }
+
+export const markPaymentFailed = (paymentId: string) => {
+  if (!paymentId) return;
+  const cleanId = paymentId.trim();
+  if (typeof window !== 'undefined') {
+    if (!window.__FAILED_PAYMENTS_SET__) {
+      window.__FAILED_PAYMENTS_SET__ = new Set<string>(HISTORICAL_FAILED_IDS);
+    }
+    window.__FAILED_PAYMENTS_SET__.add(cleanId);
+  }
+  try {
+    const raw = localStorage.getItem(FAILED_PAYMENTS_KEY);
+    const list: string[] = raw ? JSON.parse(raw) : [];
+    if (!list.includes(cleanId)) {
+      list.push(cleanId);
+      localStorage.setItem(FAILED_PAYMENTS_KEY, JSON.stringify(list));
+    }
+  } catch {}
+  try {
+    const rawSession = sessionStorage.getItem(FAILED_PAYMENTS_KEY);
+    const list: string[] = rawSession ? JSON.parse(rawSession) : [];
+    if (!list.includes(cleanId)) {
+      list.push(cleanId);
+      sessionStorage.setItem(FAILED_PAYMENTS_KEY, JSON.stringify(list));
+    }
+  } catch {}
+  console.warn(`[Meta Pixel] Blacklisted failed payment: ${cleanId}`);
+};
+
+export const isPaymentFailed = (paymentId: string): boolean => {
+  if (!paymentId) return false;
+  const cleanId = paymentId.trim();
+  if (HISTORICAL_FAILED_IDS.includes(cleanId)) return true;
+  if (typeof window !== 'undefined' && window.__FAILED_PAYMENTS_SET__?.has(cleanId)) return true;
+  try {
+    const raw = localStorage.getItem(FAILED_PAYMENTS_KEY);
+    const list: string[] = raw ? JSON.parse(raw) : [];
+    if (list.includes(cleanId)) return true;
+  } catch {}
+  return false;
+};
 
 const hasPurchaseFired = (paymentId: string): boolean => {
   if (!paymentId) return true;
-  if (HISTORICAL_SEED_IDS.includes(paymentId)) return true;
-  if (typeof window !== 'undefined' && window.__FIRED_PURCHASES_SET__?.has(paymentId)) {
+  const cleanId = paymentId.trim();
+  if (isPaymentFailed(cleanId)) return true;
+  if (HISTORICAL_SEED_IDS.includes(cleanId)) return true;
+  if (typeof window !== 'undefined' && window.__FIRED_PURCHASES_SET__?.has(cleanId)) {
     return true;
   }
   try {
     const raw = localStorage.getItem(FIRED_PURCHASES_KEY);
     const list: string[] = raw ? JSON.parse(raw) : [];
-    if (list.includes(paymentId)) return true;
+    if (list.includes(cleanId)) return true;
   } catch {}
   try {
     const rawSession = sessionStorage.getItem(FIRED_PURCHASES_KEY);
     const list: string[] = rawSession ? JSON.parse(rawSession) : [];
-    if (list.includes(paymentId)) return true;
+    if (list.includes(cleanId)) return true;
   } catch {}
-  return false;
 };
 
 const markPurchaseFired = (paymentId: string) => {
@@ -274,6 +368,7 @@ export const trackPurchase = (order: {
   // Never fire for returning customer logins, manual looks, or test IDs
   if (order.isReturning) return;
   if (
+    !order.paymentId ||
     !order.paymentId.startsWith('pay_') ||
     order.paymentId.startsWith('pay_verified_') ||
     order.paymentId.startsWith('pay_demo_') ||
@@ -282,9 +377,23 @@ export const trackPurchase = (order: {
     return;
   }
 
+  // Split multi-id strings (e.g. "pay_xxx + pay_yyy") and check if any part is failed or fired
+  const subIds = order.paymentId.split('+').map((s) => s.trim()).filter((s) => s.startsWith('pay_'));
+  for (const sid of subIds) {
+    if (isPaymentFailed(sid)) {
+      console.warn(`[Meta Pixel] Aborting Purchase - ID ${sid} is marked failed.`);
+      return;
+    }
+    if (hasPurchaseFired(sid)) {
+      console.warn(`[Meta Pixel] Aborting Purchase - ID ${sid} already fired.`);
+      return;
+    }
+  }
+
   // Never fire if payment was created more than 15 minutes ago (prevents past orders from firing again)
   if (order.timestamp && Math.abs(Date.now() - order.timestamp) > 15 * 60 * 1000) {
     markPurchaseFired(order.paymentId);
+    subIds.forEach((sid) => markPurchaseFired(sid));
     return;
   }
 
@@ -296,6 +405,7 @@ export const trackPurchase = (order: {
 
   // Mark immediately before dispatching to block any concurrent async calls
   markPurchaseFired(order.paymentId);
+  subIds.forEach((sid) => markPurchaseFired(sid));
 
   try {
     setMetaAdvancedMatching(order.email, order.phone);
