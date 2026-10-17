@@ -23,12 +23,15 @@ import {
   getPendingOrder,
   verifyOrderWithServer,
 } from '../utils/customerOrders';
+import { trackPurchase } from '../utils/metaPixel';
 
 interface OrderData {
   paymentId: string;
   email: string;
   phone: string;
-  hasBump: boolean;
+  hasBump?: boolean;
+  hasHeightBump?: boolean;
+  hasWellnessBump?: boolean;
   amount: number;
   timestamp: number;
   token?: string;
@@ -47,7 +50,7 @@ export const ThankYouPage: React.FC<ThankYouPageProps> = ({ initialOrder, onRetu
   const [manualEmail, setManualEmail] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationError, setVerificationError] = useState('');
-  const [isUpgrading, setIsUpgrading] = useState(false);
+  const [upgradingItem, setUpgradingItem] = useState<'height' | 'wellness' | null>(null);
 
   // Load order data from session or storage or URL params
   useEffect(() => {
@@ -178,30 +181,34 @@ export const ThankYouPage: React.FC<ThankYouPageProps> = ({ initialOrder, onRetu
     }
   };
 
-  // Post-purchase upsell for users who only paid ₹489: allow upgrading for ₹99
-  const handleUpgradeBump = async () => {
+  // Post-purchase 1-click upsell: Height Maxxing Protocol (₹149)
+  const handleUpgradeHeight = async () => {
     if (!order) return;
-    setIsUpgrading(true);
+    setUpgradingItem('height');
 
     if (typeof window.Razorpay === 'undefined') {
-      alert('Razorpay SDK is loading. Please try in a moment.');
-      setIsUpgrading(false);
+      alert('Razorpay SDK is loading. Please try again in a moment.');
+      setUpgradingItem(null);
       return;
     }
 
+    const upgradeAmount = RAZORPAY_CONFIG.heightBumpPrice || 149;
     let upgradeOrderId: string | undefined = undefined;
     try {
       const upRes = await fetch('/api/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount: RAZORPAY_CONFIG.bumpPrice,
+          amount: upgradeAmount,
           currency: RAZORPAY_CONFIG.currency,
-          receipt: `rcpt_ty_up_${Date.now()}`,
+          receipt: `rcpt_ty_h_${Date.now()}`,
           keyId: RAZORPAY_CONFIG.keyId,
           notes: {
             parent_payment_id: order.paymentId,
-            upgrade_type: 'Big Banana Maxxing Bump Offer (₹99)',
+            customer_email: order.email,
+            customer_phone: order.phone,
+            upgrade_type: 'Height Maxxing Protocol (₹149)',
+            height_bump_selected: 'Yes',
           },
         }),
       });
@@ -213,21 +220,24 @@ export const ThankYouPage: React.FC<ThankYouPageProps> = ({ initialOrder, onRetu
 
     const options: any = {
       key: RAZORPAY_CONFIG.keyId,
-      amount: RAZORPAY_CONFIG.bumpPrice * 100, // 9900 paise
+      amount: upgradeAmount * 100, // paise
       currency: RAZORPAY_CONFIG.currency,
       name: RAZORPAY_CONFIG.companyName,
-      description: 'Upgrade: Big Banana Maxxing Men\'s Protocol',
-      image: window.location.origin + '/images/ian-hero-physique.jpg',
+      description: 'Upgrade: Height Maxxing Protocol',
+      image: window.location.origin + '/images/height-maxxing-thumb.jpg',
       prefill: {
         email: order.email,
         contact: order.phone,
       },
       notes: {
         parent_payment_id: order.paymentId,
-        upgrade_type: 'Big Banana Maxxing Bump Offer (₹99)',
+        customer_email: order.email,
+        customer_phone: order.phone,
+        upgrade_type: 'Height Maxxing Protocol (₹149)',
+        height_bump_selected: 'Yes',
       },
       theme: {
-        color: '#3b82f6',
+        color: '#06b6d4',
       },
       handler: function (response: any) {
         if (response.razorpay_payment_id) {
@@ -236,28 +246,30 @@ export const ThankYouPage: React.FC<ThankYouPageProps> = ({ initialOrder, onRetu
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               paymentId: response.razorpay_payment_id,
-              amount: RAZORPAY_CONFIG.bumpPrice,
+              amount: upgradeAmount,
               currency: RAZORPAY_CONFIG.currency,
               keyId: RAZORPAY_CONFIG.keyId,
             }),
           }).catch(() => {});
         }
 
-        // Track ₹99 Bump Upgrade Purchase on Meta Pixel
+        // Track ₹149 Height Maxxing Upgrade on Meta Pixel
         trackPurchase({
-          paymentId: response.razorpay_payment_id || `pay_ty_up_${Date.now()}`,
+          paymentId: response.razorpay_payment_id || `pay_ty_h_${Date.now()}`,
           email: order.email,
           phone: order.phone,
           hasBump: true,
-          amount: 99,
+          hasHeightBump: true,
+          amount: upgradeAmount,
         });
 
-        setIsUpgrading(false);
+        setUpgradingItem(null);
         const upgradedOrder: OrderData = {
           ...order,
+          hasHeightBump: true,
           hasBump: true,
-          amount: order.amount + 99,
-          paymentId: `${order.paymentId} + ${response.razorpay_payment_id || 'pay_bump_upgrade'}`
+          amount: order.amount + upgradeAmount,
+          paymentId: `${order.paymentId} + ${response.razorpay_payment_id || 'pay_h_up'}`,
         };
         setOrder(upgradedOrder);
         savePaidOrder(upgradedOrder);
@@ -265,9 +277,9 @@ export const ThankYouPage: React.FC<ThankYouPageProps> = ({ initialOrder, onRetu
       },
       modal: {
         ondismiss: function () {
-          setIsUpgrading(false);
-        }
-      }
+          setUpgradingItem(null);
+        },
+      },
     };
 
     if (upgradeOrderId) {
@@ -278,7 +290,121 @@ export const ThankYouPage: React.FC<ThankYouPageProps> = ({ initialOrder, onRetu
       const rzp = new window.Razorpay(options);
       rzp.open();
     } catch (e) {
-      setIsUpgrading(false);
+      setUpgradingItem(null);
+      alert('Unable to launch checkout. Please refresh and try again.');
+    }
+  };
+
+  // Post-purchase 1-click upsell: Sexual Wellness Secrets (₹149)
+  const handleUpgradeWellness = async () => {
+    if (!order) return;
+    setUpgradingItem('wellness');
+
+    if (typeof window.Razorpay === 'undefined') {
+      alert('Razorpay SDK is loading. Please try again in a moment.');
+      setUpgradingItem(null);
+      return;
+    }
+
+    const upgradeAmount = RAZORPAY_CONFIG.wellnessBumpPrice || 149;
+    let upgradeOrderId: string | undefined = undefined;
+    try {
+      const upRes = await fetch('/api/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: upgradeAmount,
+          currency: RAZORPAY_CONFIG.currency,
+          receipt: `rcpt_ty_w_${Date.now()}`,
+          keyId: RAZORPAY_CONFIG.keyId,
+          notes: {
+            parent_payment_id: order.paymentId,
+            customer_email: order.email,
+            customer_phone: order.phone,
+            upgrade_type: 'Sexual Wellness Secrets You Want to Know (₹149)',
+            wellness_bump_selected: 'Yes',
+          },
+        }),
+      });
+      const upData = await upRes.json().catch(() => ({}));
+      if (upRes.ok && upData.orderId) {
+        upgradeOrderId = upData.orderId;
+      }
+    } catch (e) {}
+
+    const options: any = {
+      key: RAZORPAY_CONFIG.keyId,
+      amount: upgradeAmount * 100, // paise
+      currency: RAZORPAY_CONFIG.currency,
+      name: RAZORPAY_CONFIG.companyName,
+      description: 'Upgrade: Sexual Wellness Secrets You Want to Know',
+      image: window.location.origin + '/images/sexual-wellness-thumb.jpg',
+      prefill: {
+        email: order.email,
+        contact: order.phone,
+      },
+      notes: {
+        parent_payment_id: order.paymentId,
+        customer_email: order.email,
+        customer_phone: order.phone,
+        upgrade_type: 'Sexual Wellness Secrets You Want to Know (₹149)',
+        wellness_bump_selected: 'Yes',
+      },
+      theme: {
+        color: '#f59e0b',
+      },
+      handler: function (response: any) {
+        if (response.razorpay_payment_id) {
+          fetch('/api/capture-payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              paymentId: response.razorpay_payment_id,
+              amount: upgradeAmount,
+              currency: RAZORPAY_CONFIG.currency,
+              keyId: RAZORPAY_CONFIG.keyId,
+            }),
+          }).catch(() => {});
+        }
+
+        // Track ₹149 Sexual Wellness Upgrade on Meta Pixel
+        trackPurchase({
+          paymentId: response.razorpay_payment_id || `pay_ty_w_${Date.now()}`,
+          email: order.email,
+          phone: order.phone,
+          hasBump: true,
+          hasWellnessBump: true,
+          amount: upgradeAmount,
+        });
+
+        setUpgradingItem(null);
+        const upgradedOrder: OrderData = {
+          ...order,
+          hasWellnessBump: true,
+          hasBump: true,
+          amount: order.amount + upgradeAmount,
+          paymentId: `${order.paymentId} + ${response.razorpay_payment_id || 'pay_w_up'}`,
+        };
+        setOrder(upgradedOrder);
+        savePaidOrder(upgradedOrder);
+        confetti({ particleCount: 120, spread: 80 });
+      },
+      modal: {
+        ondismiss: function () {
+          setUpgradingItem(null);
+        },
+      },
+    };
+
+    if (upgradeOrderId) {
+      options.order_id = upgradeOrderId;
+    }
+
+    try {
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } catch (e) {
+      setUpgradingItem(null);
       alert('Unable to launch checkout. Please refresh and try again.');
     }
   };
@@ -433,7 +559,13 @@ export const ThankYouPage: React.FC<ThankYouPageProps> = ({ initialOrder, onRetu
                   <span className="text-[10px] text-zinc-500 block uppercase font-semibold">Total Paid</span>
                   <span className="text-white font-black text-sm font-sans">₹{order.amount}</span>
                   <span className="text-[10px] text-zinc-400 ml-1">
-                    ({order.hasBump ? 'Course + Bump Offer' : 'Calisthenics Course Only'})
+                    ({order.hasHeightBump && (order.hasWellnessBump || order.hasBump)
+                      ? 'Course + Height + Wellness'
+                      : order.hasHeightBump
+                      ? 'Course + Height Maxxing'
+                      : order.hasWellnessBump || order.hasBump
+                      ? 'Course + Sexual Wellness'
+                      : 'Calisthenics Course Only'})
                   </span>
                 </div>
               </div>
@@ -525,31 +657,30 @@ export const ThankYouPage: React.FC<ThankYouPageProps> = ({ initialOrder, onRetu
                 </div>
               </div>
 
-              {/* PRODUCT 2: Big Banana Maxxing (ONLY IF BUMP WAS PURCHASED) */}
-              {order.hasBump ? (
-                /* Unlocked Bump Offer */
-                <div className="p-5 sm:p-6 bg-gradient-to-br from-zinc-900 to-zinc-950 border-2 border-blue-400/60 rounded-3xl shadow-2xl relative overflow-hidden space-y-4">
+              {/* PRODUCT 2: Height Maxxing Protocol (Position 1 Bump • Unlocked or 1-Click Upgrade) */}
+              {order.hasHeightBump ? (
+                <div className="p-5 sm:p-6 bg-gradient-to-br from-zinc-900 to-zinc-950 border-2 border-cyan-400/60 rounded-3xl shadow-2xl relative overflow-hidden space-y-4">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-2xl bg-blue-500/20 text-blue-400 flex items-center justify-center flex-shrink-0 border border-blue-400/40">
-                        <Flame className="w-6 h-6 text-blue-400 fill-blue-400" />
+                      <div className="w-12 h-12 rounded-2xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center flex-shrink-0 border border-cyan-400/40">
+                        <Sparkles className="w-6 h-6 text-cyan-400" />
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-black uppercase tracking-wider bg-blue-500/20 text-blue-300 border border-blue-400/40 px-2 py-0.5 rounded">
-                            Order Bump • Unlocked
+                          <span className="text-[10px] font-black uppercase tracking-wider bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 px-2 py-0.5 rounded">
+                            #1 Add-on • Unlocked
                           </span>
-                          <span className="text-[10px] text-zinc-400 font-sans">₹99 Special Offer Added</span>
+                          <span className="text-[10px] text-zinc-400 font-sans">₹149 Special Offer Added</span>
                         </div>
                         <h3 className="text-lg sm:text-xl font-black text-white font-display mt-0.5">
-                          Big Banana Maxxing Protocol
+                          Height Maxxing Protocol
                         </h3>
                       </div>
                     </div>
                   </div>
 
                   <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed">
-                    Complete men's wellness protocol, hormone optimization routines, vitality blueprints, and peak performance habits.
+                    Complete natural vertical growth blueprint, spinal decompression routines, posture correction guides, and human growth hormone (HGH) sleep & nutrition optimization.
                   </p>
 
                   {/* Direct Google Drive Link Box */}
@@ -561,19 +692,19 @@ export const ThankYouPage: React.FC<ThankYouPageProps> = ({ initialOrder, onRetu
                       <input
                         type="text"
                         readOnly
-                        value={RAZORPAY_CONFIG.bumpDriveLink}
-                        className="flex-1 bg-zinc-900/90 border border-zinc-700/80 rounded-lg px-3 py-2 text-xs font-mono text-blue-300 truncate focus:outline-none select-all"
+                        value={RAZORPAY_CONFIG.heightDriveLink}
+                        className="flex-1 bg-zinc-900/90 border border-zinc-700/80 rounded-lg px-3 py-2 text-xs font-mono text-cyan-300 truncate focus:outline-none select-all"
                       />
                       <button
                         type="button"
-                        onClick={() => copyToClipboard(RAZORPAY_CONFIG.bumpDriveLink, 'bump')}
+                        onClick={() => copyToClipboard(RAZORPAY_CONFIG.heightDriveLink, 'height')}
                         className="px-3.5 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer flex-shrink-0"
                         title="Copy Link to Clipboard"
                       >
-                        {copiedLink === 'bump' ? (
+                        {copiedLink === 'height' ? (
                           <>
-                            <Check className="w-3.5 h-3.5 text-blue-400" />
-                            <span className="text-blue-400">Copied!</span>
+                            <Check className="w-3.5 h-3.5 text-cyan-400" />
+                            <span className="text-cyan-400">Copied!</span>
                           </>
                         ) : (
                           <>
@@ -588,51 +719,170 @@ export const ThankYouPage: React.FC<ThankYouPageProps> = ({ initialOrder, onRetu
                   {/* Primary Action Button */}
                   <div className="flex flex-col sm:flex-row gap-3 pt-1">
                     <a
-                      href={RAZORPAY_CONFIG.bumpDriveLink}
+                      href={RAZORPAY_CONFIG.heightDriveLink}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex-1 py-3.5 px-5 rounded-xl bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-400 hover:to-blue-500 text-white font-black text-sm flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-500/25 active:scale-95 text-center"
+                      className="flex-1 py-3.5 px-5 rounded-xl bg-gradient-to-r from-cyan-400 to-cyan-500 hover:from-cyan-300 hover:to-cyan-400 text-black font-black text-sm flex items-center justify-center gap-2 transition-all shadow-lg shadow-cyan-500/25 active:scale-95 text-center"
                     >
-                      <span>👉 Open Big Banana Maxxing Drive Folder</span>
+                      <span>👉 Open Height Maxxing Drive Folder</span>
                       <ExternalLink className="w-4 h-4" />
                     </a>
                   </div>
                 </div>
               ) : (
-                /* 🔒 Bump Offer NOT Purchased - Safe Post-Purchase Upsell Box (Drive link completely hidden) */
-                <div className="p-5 sm:p-6 bg-zinc-950/80 border-2 border-dashed border-zinc-700/80 rounded-3xl space-y-3">
+                /* 🔒 Height Maxxing NOT Purchased - Safe Post-Purchase Upsell Box */
+                <div className="p-5 sm:p-6 bg-zinc-950/80 border-2 border-dashed border-cyan-500/40 rounded-3xl space-y-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-zinc-800 text-zinc-400 flex items-center justify-center flex-shrink-0">
-                        <Lock className="w-5 h-5 text-amber-400" />
+                      <div className="w-12 h-12 rounded-xl overflow-hidden bg-black flex-shrink-0 border border-cyan-400/40">
+                        <img
+                          src="/images/height-maxxing-thumb.jpg"
+                          alt="Height Maxxing Protocol"
+                          className="w-full h-full object-cover"
+                        />
                       </div>
                       <div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded">
-                          Not Added At Checkout
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/30">
+                          Available Add-On • 1-Click Access
                         </span>
                         <h4 className="text-base sm:text-lg font-black text-white font-display mt-0.5">
-                          Big Banana Maxxing (Men's Wellness Protocol)
+                          Height Maxxing Protocol
                         </h4>
                       </div>
                     </div>
                     <div className="text-right">
-                      <span className="text-sm font-black text-white font-sans">₹99</span>
-                      <span className="text-[10px] line-through text-zinc-500 block">₹7,800</span>
+                      <span className="text-sm font-black text-white font-sans">₹149</span>
+                      <span className="text-[10px] line-through text-zinc-500 block font-sans">₹6,499</span>
                     </div>
                   </div>
 
                   <p className="text-xs text-zinc-400 leading-relaxed">
-                    You skipped this offer at checkout. If you want to add the <strong>Big Banana Maxxing</strong> program now for just ₹99, click below to unlock your second Google Drive folder instantly:
+                    You skipped this offer at checkout. If you want to add the <strong>Height Maxxing Protocol</strong> now for just ₹149, click below to unlock your Google Drive folder instantly:
                   </p>
 
                   <button
                     type="button"
-                    onClick={handleUpgradeBump}
-                    disabled={isUpgrading}
-                    className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg shadow-blue-950 active:scale-95"
+                    onClick={handleUpgradeHeight}
+                    disabled={upgradingItem === 'height'}
+                    className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-extrabold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg shadow-cyan-950 active:scale-95 disabled:opacity-60"
                   >
                     <Zap className="w-3.5 h-3.5 fill-current" />
-                    <span>{isUpgrading ? 'Launching Checkout...' : 'Unlock Big Banana Maxxing for ₹99 Now →'}</span>
+                    <span>{upgradingItem === 'height' ? 'Launching Checkout...' : 'Unlock Height Maxxing for ₹149 Now →'}</span>
+                  </button>
+                </div>
+              )}
+
+              {/* PRODUCT 3: Sexual Wellness Secrets (Position 2 Bump • Unlocked or 1-Click Upgrade) */}
+              {(order.hasWellnessBump || order.hasBump) ? (
+                <div className="p-5 sm:p-6 bg-gradient-to-br from-zinc-900 to-zinc-950 border-2 border-amber-400/60 rounded-3xl shadow-2xl relative overflow-hidden space-y-4">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center flex-shrink-0 border border-amber-400/40">
+                        <Flame className="w-6 h-6 text-amber-400 fill-amber-400" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-400/40 px-2 py-0.5 rounded">
+                            #2 Add-on • Unlocked
+                          </span>
+                          <span className="text-[10px] text-zinc-400 font-sans">Special Offer Added</span>
+                        </div>
+                        <h3 className="text-lg sm:text-xl font-black text-white font-display mt-0.5">
+                          Sexual Wellness Secrets You Want to Know
+                        </h3>
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed">
+                    Complete men's vitality blueprints, natural blood flow and circulation enhancement routines, testosterone & hormonal mastery, and peak physical endurance habits.
+                  </p>
+
+                  {/* Direct Google Drive Link Box */}
+                  <div className="p-3 bg-black/60 border border-zinc-800 rounded-xl space-y-2">
+                    <span className="text-[10px] text-zinc-400 uppercase font-bold tracking-wider block">
+                      Google Drive Link:
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        readOnly
+                        value={RAZORPAY_CONFIG.wellnessDriveLink}
+                        className="flex-1 bg-zinc-900/90 border border-zinc-700/80 rounded-lg px-3 py-2 text-xs font-mono text-amber-300 truncate focus:outline-none select-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(RAZORPAY_CONFIG.wellnessDriveLink, 'wellness')}
+                        className="px-3.5 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer flex-shrink-0"
+                        title="Copy Link to Clipboard"
+                      >
+                        {copiedLink === 'wellness' ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-amber-400" />
+                            <span className="text-amber-400">Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5" />
+                            <span>Copy Link</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Primary Action Button */}
+                  <div className="flex flex-col sm:flex-row gap-3 pt-1">
+                    <a
+                      href={RAZORPAY_CONFIG.wellnessDriveLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 py-3.5 px-5 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-black font-black text-sm flex items-center justify-center gap-2 transition-all shadow-lg shadow-amber-500/25 active:scale-95 text-center"
+                    >
+                      <span>👉 Open Sexual Wellness Drive Folder</span>
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  </div>
+                </div>
+              ) : (
+                /* 🔒 Sexual Wellness NOT Purchased - Safe Post-Purchase Upsell Box */
+                <div className="p-5 sm:p-6 bg-zinc-950/80 border-2 border-dashed border-amber-500/40 rounded-3xl space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-xl overflow-hidden bg-black flex-shrink-0 border border-amber-400/40">
+                        <img
+                          src="/images/sexual-wellness-thumb.jpg"
+                          alt="Sexual Wellness Secrets You Want to Know"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/30">
+                          Available Add-On • 1-Click Access
+                        </span>
+                        <h4 className="text-base sm:text-lg font-black text-white font-display mt-0.5">
+                          Sexual Wellness Secrets You Want to Know
+                        </h4>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-sm font-black text-white font-sans">₹149</span>
+                      <span className="text-[10px] line-through text-zinc-500 block font-sans">₹7,800</span>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-zinc-400 leading-relaxed">
+                    You skipped this offer at checkout. If you want to add the <strong>Sexual Wellness Secrets</strong> program now for just ₹149, click below to unlock your Google Drive folder instantly:
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={handleUpgradeWellness}
+                    disabled={upgradingItem === 'wellness'}
+                    className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg shadow-amber-950 active:scale-95 disabled:opacity-60"
+                  >
+                    <Zap className="w-3.5 h-3.5 fill-current" />
+                    <span>{upgradingItem === 'wellness' ? 'Launching Checkout...' : 'Unlock Sexual Wellness Secrets for ₹149 Now →'}</span>
                   </button>
                 </div>
               )}

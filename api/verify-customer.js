@@ -96,12 +96,25 @@ export default async function handler(req, res) {
 
     const amountInr = Math.round((Number(p.amount) || 48900) / 100);
     const notes = p.notes || {};
-    const hasBump =
-      extraHasBump ||
-      amountInr >= 550 ||
-      amountInr === 99 ||
+    const notesStr = JSON.stringify(notes).toLowerCase();
+
+    const hasHeightBump =
+      notesStr.includes('height') ||
+      String(notes.height_bump_selected || '').toLowerCase().startsWith('yes') ||
+      amountInr === 638 ||
+      amountInr === 787;
+
+    const hasWellnessBump =
+      notesStr.includes('wellness') ||
+      notesStr.includes('banana') ||
+      String(notes.wellness_bump_selected || '').toLowerCase().startsWith('yes') ||
       String(notes.bump_selected || '').toLowerCase().startsWith('yes') ||
+      amountInr === 787 ||
+      amountInr === 588 ||
+      amountInr === 99 ||
       Boolean(notes.upgrade_type);
+
+    const hasBump = hasHeightBump || hasWellnessBump || extraHasBump;
 
     return {
       paymentId: p.id,
@@ -109,7 +122,9 @@ export default async function handler(req, res) {
       email: notes.customer_email || p.email || email || '',
       phone: notes.customer_phone || p.contact || phone || '',
       hasBump,
-      amount: hasBump && amountInr < 550 ? 588 : amountInr,
+      hasHeightBump,
+      hasWellnessBump,
+      amount: amountInr,
       timestamp: (p.created_at || Math.floor(Date.now() / 1000)) * 1000,
     };
   }
@@ -176,19 +191,39 @@ export default async function handler(req, res) {
         });
 
         if (matchedItems.length > 0) {
-          const anyBump = matchedItems.some((item) => {
+          const anyHeightBump = matchedItems.some((item) => {
             const amt = Math.round((Number(item.amount) || 0) / 100);
             const notes = item.notes || {};
+            const notesStr = JSON.stringify(notes).toLowerCase();
             return (
-              amt >= 550 ||
-              amt === 99 ||
+              notesStr.includes('height') ||
+              String(notes.height_bump_selected || '').toLowerCase().startsWith('yes') ||
+              amt === 638 ||
+              amt === 787
+            );
+          });
+
+          const anyWellnessBump = matchedItems.some((item) => {
+            const amt = Math.round((Number(item.amount) || 0) / 100);
+            const notes = item.notes || {};
+            const notesStr = JSON.stringify(notes).toLowerCase();
+            return (
+              notesStr.includes('wellness') ||
+              notesStr.includes('banana') ||
+              String(notes.wellness_bump_selected || '').toLowerCase().startsWith('yes') ||
               String(notes.bump_selected || '').toLowerCase().startsWith('yes') ||
+              amt === 787 ||
+              amt === 588 ||
+              amt === 99 ||
               Boolean(notes.upgrade_type)
             );
           });
 
           const primaryPayment = matchedItems[0];
-          const order = await ensureCapturedAndFormat(primaryPayment, anyBump);
+          const order = await ensureCapturedAndFormat(primaryPayment);
+          order.hasHeightBump = anyHeightBump || Boolean(order.hasHeightBump);
+          order.hasWellnessBump = anyWellnessBump || Boolean(order.hasWellnessBump);
+          order.hasBump = order.hasHeightBump || order.hasWellnessBump;
           return res.status(200).json({ verified: true, order: { ...order, isReturning: true } });
         }
       }

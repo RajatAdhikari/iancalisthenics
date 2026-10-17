@@ -300,17 +300,20 @@ export const trackInitiateCheckout = (amount = 489, hasBump = false) => {
 };
 
 /**
- * Fires when user checks the ₹99 Order Bump checkbox
+ * Fires when user checks either the Height Maxxing or Sexual Wellness Order Bump checkbox
  */
-export const trackBumpAddToCart = () => {
+export const trackBumpAddToCart = (bumpType: 'height' | 'wellness' = 'height') => {
   if (typeof window === 'undefined' || typeof window.fbq !== 'function') return;
 
   try {
+    const isHeight = bumpType === 'height';
     window.fbq('track', 'AddToCart', {
-      content_name: 'Big Banana Maxxing Bump Offer',
-      content_ids: ['big_banana_bump_99'],
+      content_name: isHeight
+        ? 'Height Maxxing Protocol (Add-On)'
+        : 'Sexual Wellness Secrets You Want to Know (Add-On)',
+      content_ids: [isHeight ? 'height_maxxing_149' : 'sexual_wellness_149'],
       content_type: 'product',
-      value: 99,
+      value: 149,
       currency: 'INR',
     });
   } catch (e) {
@@ -321,7 +324,12 @@ export const trackBumpAddToCart = () => {
 /**
  * Fires when user fills Email + Phone and clicks "Get it now" to launch Razorpay
  */
-export const trackAddPaymentInfo = (email: string, phone: string, totalAmount: number, hasBump: boolean) => {
+export const trackAddPaymentInfo = (
+  email: string,
+  phone: string,
+  totalAmount: number,
+  options?: { hasHeightBump?: boolean; hasWellnessBump?: boolean; hasBump?: boolean } | boolean
+) => {
   if (typeof window === 'undefined' || typeof window.fbq !== 'function') return;
 
   try {
@@ -333,13 +341,26 @@ export const trackAddPaymentInfo = (email: string, phone: string, totalAmount: n
       currency: 'INR',
     });
 
+    const isBool = typeof options === 'boolean';
+    const hasBump = isBool ? options : Boolean(options?.hasBump);
+    const hasHeightBump = !isBool && Boolean(options?.hasHeightBump);
+    const hasWellnessBump = !isBool ? Boolean(options?.hasWellnessBump) : hasBump;
+
+    const contentIds = ['ian_calisthenics_489'];
+    const names = ['Ian Barseagle Calisthenics Masterclass'];
+
+    if (hasHeightBump) {
+      contentIds.push('height_maxxing_149');
+      names.push('Height Maxxing Protocol');
+    }
+    if (hasWellnessBump || hasBump) {
+      contentIds.push('sexual_wellness_149');
+      names.push('Sexual Wellness Secrets');
+    }
+
     window.fbq('track', 'AddPaymentInfo', {
-      content_name: hasBump
-        ? 'Ian Barseagle Calisthenics + Big Banana Maxxing'
-        : 'Ian Barseagle Calisthenics Masterclass',
-      content_ids: hasBump
-        ? ['ian_calisthenics_489', 'big_banana_bump_99']
-        : ['ian_calisthenics_489'],
+      content_name: names.join(' + '),
+      content_ids: contentIds,
       content_type: 'product',
       value: totalAmount,
       currency: 'INR',
@@ -358,7 +379,9 @@ export const trackPurchase = (order: {
   email?: string;
   phone?: string;
   amount: number;
-  hasBump: boolean;
+  hasBump?: boolean;
+  hasHeightBump?: boolean;
+  hasWellnessBump?: boolean;
   timestamp?: number;
   isReturning?: boolean;
 }) => {
@@ -410,21 +433,32 @@ export const trackPurchase = (order: {
   try {
     setMetaAdvancedMatching(order.email, order.phone);
 
+    const contentIds = ['ian_calisthenics_489'];
+    const names = ['Ian Barseagle Calisthenics Masterclass'];
+    let numItems = 1;
+
+    if (order.hasHeightBump) {
+      contentIds.push('height_maxxing_149');
+      names.push('Height Maxxing Protocol');
+      numItems++;
+    }
+    if (order.hasWellnessBump || order.hasBump) {
+      contentIds.push('sexual_wellness_149');
+      names.push('Sexual Wellness Secrets');
+      numItems++;
+    }
+
     window.fbq(
       'track',
       'Purchase',
       {
         value: Number(order.amount) || 489,
         currency: 'INR',
-        content_name: order.hasBump
-          ? 'Ian Barseagle Calisthenics + Big Banana Maxxing Bundle'
-          : 'Ian Barseagle Calisthenics Masterclass',
+        content_name: names.join(' + '),
         content_category: 'Fitness & Calisthenics Course',
         content_type: 'product',
-        content_ids: order.hasBump
-          ? ['ian_calisthenics_489', 'big_banana_bump_99']
-          : ['ian_calisthenics_489'],
-        num_items: order.hasBump ? 2 : 1,
+        content_ids: contentIds,
+        num_items: numItems,
         order_id: order.paymentId,
       },
       { eventID: order.paymentId }

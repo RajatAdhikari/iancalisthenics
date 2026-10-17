@@ -35,10 +35,13 @@ export interface OrderData {
   paymentId: string;
   email: string;
   phone: string;
-  hasBump: boolean;
+  hasBump?: boolean;
+  hasHeightBump?: boolean;
+  hasWellnessBump?: boolean;
   amount: number;
   timestamp: number;
   isReturning?: boolean;
+  token?: string;
 }
 
 interface CheckoutModalProps {
@@ -50,7 +53,9 @@ interface CheckoutModalProps {
 export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onPaymentSuccess }) => {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [hasBump, setHasBump] = useState(false);
+  const [hasHeightBump, setHasHeightBump] = useState(false);
+  const [hasWellnessBump, setHasWellnessBump] = useState(false);
+  const hasBump = hasHeightBump || hasWellnessBump;
   const [errors, setErrors] = useState<{ email?: string; phone?: string }>({});
   const [isSuccess, setIsSuccess] = useState(false);
   const [paymentId, setPaymentId] = useState('');
@@ -80,8 +85,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
   const isKeyPlaceholder = activeKey === 'rzp_live_DEMO_KEY' || activeKey.includes('DEMO_KEY') || !activeKey.startsWith('rzp_');
 
   const basePrice = RAZORPAY_CONFIG.basePrice; // 489
-  const bumpPrice = RAZORPAY_CONFIG.bumpPrice; // 99
-  const totalAmount = hasBump ? basePrice + bumpPrice : basePrice; // 588 or 489
+  const heightBumpPrice = RAZORPAY_CONFIG.heightBumpPrice || 149; // 149
+  const wellnessBumpPrice = RAZORPAY_CONFIG.wellnessBumpPrice || 149; // 149
+  const totalAmount =
+    basePrice +
+    (hasHeightBump ? heightBumpPrice : 0) +
+    (hasWellnessBump ? wellnessBumpPrice : 0);
 
   const validate = () => {
     const newErrors: { email?: string; phone?: string } = {};
@@ -140,8 +149,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
     }
 
     if (matchedOrder) {
-      // If customer already owns everything OR did not select bump, redirect directly!
-      if (!hasBump || matchedOrder.hasBump) {
+      const needsHeight = hasHeightBump && !matchedOrder.hasHeightBump;
+      const needsWellness = hasWellnessBump && !(matchedOrder.hasWellnessBump || matchedOrder.hasBump);
+
+      // If customer already owns everything selected OR did not select any bump, redirect directly!
+      if (!needsHeight && !needsWellness) {
         if (onPaymentSuccess) {
           onPaymentSuccess({ ...matchedOrder, isReturning: true });
         }
@@ -149,9 +161,18 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
         return;
       }
 
-      // If customer already owns base course and wants to add bump offer now, charge only ₹99!
-      const upgradeAmount = bumpPrice;
-      trackAddPaymentInfo(email, phone, upgradeAmount, true);
+      // If customer already owns base course and wants to add bump offer(s) now:
+      const upgradeAmount = (needsHeight ? heightBumpPrice : 0) + (needsWellness ? wellnessBumpPrice : 0);
+      const upgradeTitles: string[] = [];
+      if (needsHeight) upgradeTitles.push('Height Maxxing Protocol (₹149)');
+      if (needsWellness) upgradeTitles.push('Sexual Wellness Secrets (₹149)');
+      const upgradeDescription = `Upgrade: ${upgradeTitles.join(' + ')}`;
+
+      trackAddPaymentInfo(email, phone, upgradeAmount, {
+        hasHeightBump: needsHeight,
+        hasWellnessBump: needsWellness,
+        hasBump: true,
+      });
       setIsProcessing(true);
       let upgradeOrderId: string | undefined = undefined;
       try {
@@ -166,7 +187,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
             notes: {
               customer_email: email,
               customer_phone: phone,
-              upgrade_type: 'Big Banana Maxxing Bump Offer (₹99)',
+              upgrade_type: upgradeDescription,
+              height_bump_selected: needsHeight ? 'Yes' : 'No',
+              wellness_bump_selected: needsWellness ? 'Yes' : 'No',
               parent_payment: matchedOrder.paymentId,
             },
           }),
@@ -184,7 +207,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
         email,
         phone,
         hasBump: true,
-        amount: matchedOrder.amount + 99,
+        hasHeightBump: matchedOrder.hasHeightBump || needsHeight,
+        hasWellnessBump: matchedOrder.hasWellnessBump || matchedOrder.hasBump || needsWellness,
+        amount: matchedOrder.amount + upgradeAmount,
         timestamp: Date.now(),
       });
 
@@ -193,10 +218,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
 
       const options: any = {
         key: activeKey,
-        amount: upgradeAmount * 100, // 9900 paise
+        amount: upgradeAmount * 100, // paise
         currency: RAZORPAY_CONFIG.currency,
         name: RAZORPAY_CONFIG.companyName,
-        description: "Upgrade: Big Banana Maxxing Men's Protocol",
+        description: upgradeDescription,
         image: window.location.origin + '/images/ian-hero-physique.jpg',
         prefill: {
           email: email,
@@ -205,7 +230,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
         notes: {
           customer_email: email,
           customer_phone: phone,
-          upgrade_type: 'Big Banana Maxxing Bump Offer (₹99)',
+          upgrade_type: upgradeDescription,
+          height_bump_selected: needsHeight ? 'Yes' : 'No',
+          wellness_bump_selected: needsWellness ? 'Yes' : 'No',
           parent_payment: matchedOrder.paymentId,
         },
         theme: {
@@ -228,11 +255,14 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
 
           // Single canonical payment tracking via onPaymentSuccess (prevents duplicate pixel fires)
           const upgradedOrder: OrderData = {
+            ...matchedOrder,
             paymentId: response.razorpay_payment_id || `pay_up_${Date.now()}`,
             email: email,
             phone: phone.startsWith('+91') ? phone : '+91' + phone,
             hasBump: true,
-            amount: upgradeAmount,
+            hasHeightBump: matchedOrder.hasHeightBump || needsHeight,
+            hasWellnessBump: matchedOrder.hasWellnessBump || matchedOrder.hasBump || needsWellness,
+            amount: matchedOrder.amount + upgradeAmount,
             timestamp: Date.now(),
           };
           savePaidOrder(upgradedOrder);
@@ -253,7 +283,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
             });
             if (verified && onPaymentSuccess) {
               bumpCompleted = true;
-              onPaymentSuccess({ ...verified, hasBump: true });
+              onPaymentSuccess({
+                ...verified,
+                hasBump: true,
+                hasHeightBump: matchedOrder.hasHeightBump || needsHeight,
+                hasWellnessBump: matchedOrder.hasWellnessBump || matchedOrder.hasBump || needsWellness,
+              });
               handleClose();
             } else {
               clearPendingOrder();
@@ -297,8 +332,16 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
       return;
     }
 
+    const bumpTitles: string[] = [];
+    if (hasHeightBump) bumpTitles.push('Height Maxxing Protocol');
+    if (hasWellnessBump) bumpTitles.push('Sexual Wellness Secrets');
+    const orderDescription =
+      bumpTitles.length > 0
+        ? `Calisthenics Masterclass + ${bumpTitles.join(' + ')}`
+        : 'Ian Barseagle Calisthenics Masterclass (Lifetime Access)';
+
     // Track Lead + AddPaymentInfo + Manual Advanced Matching on Meta Pixel
-    trackAddPaymentInfo(email, phone, totalAmount, hasBump);
+    trackAddPaymentInfo(email, phone, totalAmount, { hasHeightBump, hasWellnessBump, hasBump });
 
     setIsProcessing(true);
 
@@ -316,7 +359,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
           notes: {
             customer_email: email,
             customer_phone: phone,
-            bump_selected: hasBump ? 'Yes (Big Banana Maxxing ₹99)' : 'No',
+            height_bump_selected: hasHeightBump ? 'Yes (Height Maxxing ₹149)' : 'No',
+            wellness_bump_selected: hasWellnessBump ? 'Yes (Sexual Wellness Secrets ₹149)' : 'No',
+            bump_selected: hasBump ? 'Yes' : 'No',
             total_inr: `₹${totalAmount}`,
           },
         }),
@@ -339,6 +384,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
       email,
       phone,
       hasBump,
+      hasHeightBump,
+      hasWellnessBump,
       amount: totalAmount,
       timestamp: Date.now(),
     });
@@ -348,12 +395,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
 
     const options: any = {
       key: activeKey,
-      amount: totalAmount * 100, // paise (48900 or 58800)
+      amount: totalAmount * 100, // paise
       currency: RAZORPAY_CONFIG.currency,
       name: RAZORPAY_CONFIG.companyName,
-      description: hasBump
-        ? 'Calisthenics Masterclass + Big Banana Maxxing'
-        : 'Ian Barseagle Calisthenics Masterclass (Lifetime Access)',
+      description: orderDescription,
       image: window.location.origin + '/images/ian-hero-physique.jpg',
       prefill: {
         email: email,
@@ -362,7 +407,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
       notes: {
         customer_email: email,
         customer_phone: phone,
-        bump_selected: hasBump ? 'Yes (Big Banana Maxxing ₹99)' : 'No',
+        height_bump_selected: hasHeightBump ? 'Yes (Height Maxxing ₹149)' : 'No',
+        wellness_bump_selected: hasWellnessBump ? 'Yes (Sexual Wellness Secrets ₹149)' : 'No',
+        bump_selected: hasBump ? 'Yes' : 'No',
         total_inr: `₹${totalAmount}`,
       },
       theme: {
@@ -389,6 +436,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
           email: email,
           phone: phone.startsWith('+91') ? phone : '+91' + phone,
           hasBump: hasBump,
+          hasHeightBump: hasHeightBump,
+          hasWellnessBump: hasWellnessBump,
           amount: totalAmount,
           timestamp: Date.now(),
         };
@@ -425,7 +474,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
           });
           if (verified && onPaymentSuccess) {
             paymentCompleted = true;
-            onPaymentSuccess(verified);
+            onPaymentSuccess({
+              ...verified,
+              hasHeightBump,
+              hasWellnessBump,
+            });
             handleClose();
           } else {
             clearPendingOrder();
@@ -469,8 +522,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
       email: email,
       phone: phone.startsWith('+91') ? phone : '+91' + phone,
       hasBump: hasBump,
+      hasHeightBump: hasHeightBump,
+      hasWellnessBump: hasWellnessBump,
       amount: totalAmount,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
 
     savePaidOrder(orderData);
@@ -492,7 +547,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
     setIsSuccess(false);
     setEmail('');
     setPhone('');
-    setHasBump(false);
+    setHasHeightBump(false);
+    setHasWellnessBump(false);
     setErrors({});
     setShowKeyInput(false);
     onClose();
@@ -569,30 +625,59 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
                 </a>
               </div>
 
-              {/* Product 2: Big Banana Maxxing Drive Link (ONLY IF BUMP WAS PURCHASED) */}
-              {hasBump && (
-                <div className="p-3 bg-zinc-950 border border-blue-500/40 rounded-xl space-y-2">
+              {/* Product 2: Height Maxxing Protocol (Position 1 Bump, Unlocked if purchased) */}
+              {hasHeightBump && (
+                <div className="p-3 bg-zinc-950 border border-cyan-500/40 rounded-xl space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-blue-300 flex items-center gap-1">
-                      <Flame className="w-3 h-3 text-blue-400 fill-blue-400" />
-                      Big Banana Maxxing (Bump Offer)
+                    <span className="text-[11px] font-bold text-cyan-300 flex items-center gap-1">
+                      <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                      Height Maxxing Protocol
                     </span>
                     <button
                       type="button"
-                      onClick={() => copyToClipboard(RAZORPAY_CONFIG.bumpDriveLink, 'modal-bump')}
+                      onClick={() => copyToClipboard(RAZORPAY_CONFIG.heightDriveLink, 'modal-height')}
                       className="text-[10px] text-zinc-300 hover:text-white bg-zinc-800 px-2 py-0.5 rounded flex items-center gap-1 cursor-pointer"
                     >
-                      {copiedLink === 'modal-bump' ? <Check className="w-3 h-3 text-blue-400" /> : <Copy className="w-3 h-3" />}
-                      <span>{copiedLink === 'modal-bump' ? 'Copied' : 'Copy'}</span>
+                      {copiedLink === 'modal-height' ? <Check className="w-3 h-3 text-cyan-400" /> : <Copy className="w-3 h-3" />}
+                      <span>{copiedLink === 'modal-height' ? 'Copied' : 'Copy'}</span>
                     </button>
                   </div>
                   <a
-                    href={RAZORPAY_CONFIG.bumpDriveLink}
+                    href={RAZORPAY_CONFIG.heightDriveLink}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-full py-2 px-3 rounded-lg bg-blue-500 hover:bg-blue-400 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 transition-colors text-center"
+                    className="w-full py-2 px-3 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black font-extrabold text-xs flex items-center justify-center gap-1.5 transition-colors text-center"
                   >
-                    <span>👉 Open Big Banana Maxxing Drive</span>
+                    <span>👉 Open Height Maxxing Drive Folder</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+              )}
+
+              {/* Product 3: Sexual Wellness Secrets (Position 2 Bump, Unlocked if purchased) */}
+              {(hasWellnessBump || hasBump) && (
+                <div className="p-3 bg-zinc-950 border border-amber-500/40 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-amber-300 flex items-center gap-1">
+                      <Flame className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                      Sexual Wellness Secrets
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard(RAZORPAY_CONFIG.wellnessDriveLink, 'modal-wellness')}
+                      className="text-[10px] text-zinc-300 hover:text-white bg-zinc-800 px-2 py-0.5 rounded flex items-center gap-1 cursor-pointer"
+                    >
+                      {copiedLink === 'modal-wellness' ? <Check className="w-3 h-3 text-amber-400" /> : <Copy className="w-3 h-3" />}
+                      <span>{copiedLink === 'modal-wellness' ? 'Copied' : 'Copy'}</span>
+                    </button>
+                  </div>
+                  <a
+                    href={RAZORPAY_CONFIG.wellnessDriveLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-2 px-3 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs flex items-center justify-center gap-1.5 transition-colors text-center"
+                  >
+                    <span>👉 Open Sexual Wellness Drive Folder</span>
                     <ExternalLink className="w-3.5 h-3.5" />
                   </a>
                 </div>
@@ -831,57 +916,124 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
                 )}
               </div>
 
-              {/* 🌟 Order Bump Offer Box (Blue dashed border matching user's design) 🌟 */}
+              {/* 🌟 Position 1: Height Maxxing Protocol Bump Offer Box (₹149) 🌟 */}
               <div
                 onClick={() => {
-                  const next = !hasBump;
-                  setHasBump(next);
-                  if (next) trackBumpAddToCart();
+                  const next = !hasHeightBump;
+                  setHasHeightBump(next);
+                  if (next) trackBumpAddToCart('height');
                 }}
                 className={`cursor-pointer rounded-2xl border-2 border-dashed p-3 sm:p-3.5 transition-all ${
-                  hasBump
-                    ? 'border-blue-400 bg-blue-950/40 shadow-lg shadow-blue-950/50'
-                    : 'border-blue-500/60 bg-blue-950/20 hover:border-blue-400 hover:bg-blue-950/30'
+                  hasHeightBump
+                    ? 'border-cyan-400 bg-cyan-950/40 shadow-lg shadow-cyan-950/50'
+                    : 'border-cyan-500/60 bg-cyan-950/20 hover:border-cyan-400 hover:bg-cyan-950/30'
                 }`}
               >
                 <div className="flex gap-3">
                   {/* Thumbnail Image */}
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-black flex-shrink-0 border border-blue-400/40">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-black flex-shrink-0 border border-cyan-400/40">
                     <img
-                      src="/images/bump-thumbnail.jpg"
-                      alt="Big Banana Maxxing"
+                      src="/images/height-maxxing-thumb.jpg"
+                      alt="Height Maxxing Protocol"
                       className="w-full h-full object-cover"
                     />
                   </div>
 
                   {/* Title & Description */}
                   <div className="flex-1">
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <span className="text-[9px] font-black uppercase tracking-wider bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 px-1.5 py-0.5 rounded">
+                        #1 Exclusive Add-on
+                      </span>
+                    </div>
                     <h4 className="font-extrabold text-white text-sm leading-tight">
-                      Big Banana Maxxing
+                      Height Maxxing Protocol
                     </h4>
-                    <p className="text-[11px] text-zinc-300 mt-1 leading-snug line-clamp-3">
-                      Unlock your full potential with a program designed for men's wellness, featuring benefits like boosted confidence, vitality, and peak performance...
+                    <p className="text-[11px] text-zinc-300 mt-1 leading-snug line-clamp-2">
+                      Unlock natural vertical growth, spinal decompression techniques, posture restoration, and growth hormone optimization.
                     </p>
                   </div>
                 </div>
 
                 {/* Price & Checkbox Button */}
-                <div className="mt-2.5 flex items-center justify-between pt-2 border-t border-blue-500/20">
+                <div className="mt-2.5 flex items-center justify-between pt-2 border-t border-cyan-500/20">
                   <div className="flex items-baseline gap-1.5">
-                    <span className="text-base font-black text-white font-sans">₹99</span>
+                    <span className="text-base font-black text-white font-sans">₹149</span>
+                    <span className="text-xs line-through text-zinc-400 font-sans">₹6,499</span>
+                  </div>
+
+                  <div className="flex items-center gap-2 bg-white text-black px-3 py-1.5 rounded-lg text-xs font-bold shadow-md hover:bg-zinc-200 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={hasHeightBump}
+                      onChange={(e) => {
+                        setHasHeightBump(e.target.checked);
+                        if (e.target.checked) trackBumpAddToCart('height');
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-4 h-4 rounded border-zinc-400 text-cyan-600 focus:ring-0 cursor-pointer"
+                    />
+                    <span>Avail the offer</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 🌟 Position 2: Sexual Wellness Secrets Bump Offer Box (₹149) 🌟 */}
+              <div
+                onClick={() => {
+                  const next = !hasWellnessBump;
+                  setHasWellnessBump(next);
+                  if (next) trackBumpAddToCart('wellness');
+                }}
+                className={`cursor-pointer rounded-2xl border-2 border-dashed p-3 sm:p-3.5 transition-all ${
+                  hasWellnessBump
+                    ? 'border-amber-400 bg-amber-950/40 shadow-lg shadow-amber-950/50'
+                    : 'border-amber-500/60 bg-amber-950/20 hover:border-amber-400 hover:bg-amber-950/30'
+                }`}
+              >
+                <div className="flex gap-3">
+                  {/* Thumbnail Image */}
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-black flex-shrink-0 border border-amber-400/40">
+                    <img
+                      src="/images/sexual-wellness-thumb.jpg"
+                      alt="Sexual Wellness Secrets You Want to Know"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+
+                  {/* Title & Description */}
+                  <div className="flex-1">
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <span className="text-[9px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1.5 py-0.5 rounded">
+                        #2 Men's Secret Guide
+                      </span>
+                    </div>
+                    <h4 className="font-extrabold text-white text-sm leading-tight">
+                      Sexual Wellness Secrets You Want to Know
+                    </h4>
+                    <p className="text-[11px] text-zinc-300 mt-1 leading-snug line-clamp-2">
+                      Unlock peak vitality, natural circulation enhancement, testosterone & hormone optimization routines, and endurance mastery.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Price & Checkbox Button */}
+                <div className="mt-2.5 flex items-center justify-between pt-2 border-t border-amber-500/20">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-base font-black text-white font-sans">₹149</span>
                     <span className="text-xs line-through text-zinc-400 font-sans">₹7,800</span>
                   </div>
 
                   <div className="flex items-center gap-2 bg-white text-black px-3 py-1.5 rounded-lg text-xs font-bold shadow-md hover:bg-zinc-200 transition-colors">
                     <input
                       type="checkbox"
-                      checked={hasBump}
+                      checked={hasWellnessBump}
                       onChange={(e) => {
-                        setHasBump(e.target.checked);
-                        if (e.target.checked) trackBumpAddToCart();
+                        setHasWellnessBump(e.target.checked);
+                        if (e.target.checked) trackBumpAddToCart('wellness');
                       }}
                       onClick={(e) => e.stopPropagation()}
-                      className="w-4 h-4 rounded border-zinc-400 text-blue-600 focus:ring-0 cursor-pointer"
+                      className="w-4 h-4 rounded border-zinc-400 text-amber-600 focus:ring-0 cursor-pointer"
                     />
                     <span>Avail the offer</span>
                   </div>
@@ -891,17 +1043,24 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
               {/* Price Calculation Summary */}
               <div className="pt-2 border-t border-zinc-800 space-y-1 text-xs text-zinc-300">
                 <div className="flex justify-between items-center text-zinc-400">
-                  <span>Sub Total</span>
+                  <span>Sub Total (Calisthenics Course)</span>
                   <div className="flex items-center gap-1.5">
                     <span className="line-through">₹14,700</span>
                     <span className="text-white font-semibold font-sans">₹489</span>
                   </div>
                 </div>
 
-                {hasBump && (
-                  <div className="flex justify-between items-center text-blue-300">
-                    <span>Big Banana Maxxing Bump</span>
-                    <span className="font-semibold font-sans">+ ₹99</span>
+                {hasHeightBump && (
+                  <div className="flex justify-between items-center text-cyan-300">
+                    <span>Height Maxxing Protocol</span>
+                    <span className="font-semibold font-sans">+ ₹149</span>
+                  </div>
+                )}
+
+                {hasWellnessBump && (
+                  <div className="flex justify-between items-center text-amber-300">
+                    <span>Sexual Wellness Secrets</span>
+                    <span className="font-semibold font-sans">+ ₹149</span>
                   </div>
                 )}
 
@@ -912,7 +1071,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
               </div>
 
               {/* Submit Button */}
-              {existingOrder && (!hasBump || existingOrder.hasBump) ? (
+              {existingOrder &&
+              (!hasHeightBump || existingOrder.hasHeightBump) &&
+              (!hasWellnessBump || existingOrder.hasWellnessBump || existingOrder.hasBump) ? (
                 /* Returning Customer - Direct Access Button (NO Razorpay call) */
                 <button
                   type="submit"
@@ -921,14 +1082,21 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, o
                   <CheckCircle2 className="w-5 h-5 text-black" />
                   <span>Access Unlocked Course (Already Paid) →</span>
                 </button>
-              ) : existingOrder && hasBump && !existingOrder.hasBump ? (
-                /* Returning Customer who owns base course and wants to unlock bump for ₹99 */
+              ) : existingOrder &&
+                ((hasHeightBump && !existingOrder.hasHeightBump) ||
+                  (hasWellnessBump && !(existingOrder.hasWellnessBump || existingOrder.hasBump))) ? (
+                /* Returning Customer who owns base course and wants to unlock bump(s) */
                 <button
                   type="submit"
                   className="w-full py-3.5 px-4 rounded-xl bg-blue-500 hover:bg-blue-400 active:scale-95 text-white font-black text-base flex items-center justify-center gap-2 transition-all shadow-xl shadow-blue-950 mt-2 cursor-pointer"
                 >
                   <Zap className="w-5 h-5 text-white" />
-                  <span>Pay ₹99 To Unlock Bump Offer →</span>
+                  <span>
+                    Pay ₹
+                    {(hasHeightBump && !existingOrder.hasHeightBump ? 149 : 0) +
+                      (hasWellnessBump && !(existingOrder.hasWellnessBump || existingOrder.hasBump) ? 149 : 0)}{' '}
+                    To Unlock Selected Add-ons →
+                  </span>
                 </button>
               ) : (
                 /* New Customer - Regular Get It Now */

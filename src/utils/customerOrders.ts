@@ -5,7 +5,9 @@ export interface PendingOrderData {
   orderId?: string;
   email: string;
   phone: string;
-  hasBump: boolean;
+  hasBump?: boolean;
+  hasHeightBump?: boolean;
+  hasWellnessBump?: boolean;
   amount: number;
   timestamp: number;
 }
